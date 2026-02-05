@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure user-local bin is available
+# Ensure ~/.local/bin is on PATHy
 export PATH="$HOME/.local/bin:$PATH"
 
 # Upgrade pip
@@ -16,4 +16,10 @@ python3 -m pip install --user \
 # Install VyOS Ansible collection
 ansible-galaxy collection install \
     git+https://github.com/vyos/vyos.vyos.git,main
+
+# If ansible is not on PATH
+echo
+echo "⚠️  ansible is installed but it may not be on PATH"
+echo 'Run: export PATH="$HOME/.local/bin:$PATH"'
+echo
 
