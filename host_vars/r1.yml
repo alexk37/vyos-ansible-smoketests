@@ -34,7 +34,7 @@ bgp:
 
 vpn_ipsec:
   peer: LEFT
-  connection_type: respond
+  connection_type: none
   local_id: "{{ r1_eth1_ip }}"
   remote_id: "{{ r2_eth1_ip }}"
   interface: eth1

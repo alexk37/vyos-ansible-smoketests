@@ -1,6 +1,6 @@
 {% for iface in vpp.interfaces %}
 {%    if iface.type == 'ethernet' %}
-set vpp settings interface {{ iface.name }} driver '{{ iface.driver }}'
+set vpp settings interface {{ iface.name }}
 {%    endif %}
 {% endfor %}
 
