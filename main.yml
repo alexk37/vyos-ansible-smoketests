@@ -16,7 +16,7 @@
     #- op_basic_check2
     - vpn_setup
     - vpn_check
-    - vpp_setup
+    # - vpp_setup
 
 
 # Run dhcp-server only on R1
