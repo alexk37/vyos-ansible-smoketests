@@ -1,0 +1,345 @@
+---
+# FW-IPV6-001: IPv6 input, forward, and output filter rules — 3-node traffic enforcement
+# Topology: 3-node asymmetric
+#   r1: source — configures eth1 (fd00:0:2::1/64), adds static route to r3 network
+#   r2: middle router — configures eth1 (fd00:0:2::2/64) + eth2 (fd00:0:3::2/64),
+#       applies input filter (Phase A), and forward filter (Phase C)
+#   r3: destination — configures eth1 (fd00:0:3::3/64), adds static route to r1 network
+#
+# Traffic paths:
+#   Phase A (input filter):  r1 → r2  (r2's INPUT chain)
+#   Phase B (output filter): r1 → r2  (r1's OUTPUT chain)
+#   Phase C (forward filter): r1 → r2 → r3  (r2's FORWARD chain)
+#
+# VyOS unit tests (smoketest/scripts/cli/test_firewall.py:test_ipv6_basic_rules) already cover:
+#   - CLI → nftables chain creation: VYOS_IPV6_INPUT_filter, VYOS_IPV6_FORWARD_filter,
+#     VYOS_IPV6_OUTPUT_filter, VYOS_IPV6_OUTPUT_raw, VYOS_IPV6_PREROUTING_raw
+#   - Rule translation: protocol, source/dest address/port, interface, action types
+#   - Default-action, logging, named chains, state policy — all single-node, no real traffic
+#
+# This test adds what unit tests cannot cover:
+#   - Input filter: real ICMPv6 blocked at r2 when r1 pings r2 (source ULA match, NDP safe)
+#   - Input filter rule ordering: accept rule 50 overrides drop rule 100 for live traffic
+#   - Output filter: r1's own ICMPv6 blocked before leaving (dest ULA match, NDP safe)
+#   - Output filter rule ordering: accept rule 50 overrides drop rule 100
+#   - Forward filter: real ICMPv6 routed r1→r3 via r2 blocked/accepted at r2's FORWARD chain
+#   - Full 3-node interop: IPv6 static routing + forward filter on a two-interface router
+#
+# NDP safety: Source/dest address restrictions in Phase A/B target ULA (fd00:0:2::x).
+# NDP uses link-local source fe80:: and solicited-node multicast ff02::1:ffxx:xxxx,
+# which never match fd00:: rules. Phase C forward filter only affects routed traffic.
+- block:
+    # ── Phase 1: Underlay setup ──────────────────────────────────────────────
+    - name: FW-IPV6-001 - Configure r1 eth1 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r1_eth1_ip6 }}/64'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Configure r2 eth1 and eth2 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r2_eth1_ip6 }}/64'"
+          - "set interfaces ethernet eth2 address '{{ r2_eth2_ip6 }}/64'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Configure r3 eth1 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r3_eth1_ip6 }}/64'"
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    # ── Phase 2: Static routes ───────────────────────────────────────────────
+    - name: FW-IPV6-001 - Add r1 static route to r3 network via r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set protocols static route6 fd00:0:3::/64 next-hop '{{ r2_eth1_ip6 }}'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Add r3 static route to r1 network via r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set protocols static route6 fd00:0:2::/64 next-hop '{{ r2_eth2_ip6 }}'"
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    # ── Phase 3: Baseline — confirm routing works before any filter ──────────
+    - name: FW-IPV6-001 - Baseline ping r1→r3 IPv6 (routing only, no filter)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip6 }} count 3 deadline 10"
+      register: fw_ipv6_fwd_baseline
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert baseline IPv6 routing r1→r3 OK
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv6_fwd_baseline.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Baseline IPv6 routing r1→r3 failed before any filter was applied.
+          Check eth1/eth2 IPv6 underlay and static routes.
+          Output: {{ fw_ipv6_fwd_baseline.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    # ── Phase A: IPv6 input filter ─────────────────────────────────────────────
+    # INPUT hook fires for traffic destined to the router itself.
+    # Source address restricts to r1's ULA so NDP (link-local source) is unaffected.
+    - name: FW-IPV6-001 - Add input filter drop rule on r2 for ICMPv6 from r1
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 input filter rule 100 action 'drop'"
+          - "set firewall ipv6 input filter rule 100 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 input filter rule 100 source address '{{ r1_eth1_ip6 }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1→r2 ICMPv6 blocked by input filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_eth1_ip6 }} count 3 deadline 5"
+      register: fw_ipv6_in_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert input filter drops r1→r2 ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_ipv6_in_block.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected input filter to block r1→r2 ICMPv6 but ping succeeded.
+          Output: {{ fw_ipv6_in_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Add input filter accept rule 50 on r2 (wins over drop rule 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 input filter rule 50 action 'accept'"
+          - "set firewall ipv6 input filter rule 50 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 input filter rule 50 source address '{{ r1_eth1_ip6 }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1→r2 ICMPv6 accepted (rule 50 wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_eth1_ip6 }} count 3 deadline 10"
+      register: fw_ipv6_in_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert input filter accept rule allows r1→r2 ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv6_in_accept.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected accept rule 50 to override drop rule 100 but ping failed.
+          Output: {{ fw_ipv6_in_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Cleanup input filter rules (between phases)
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 input filter rule 50"
+          - "delete firewall ipv6 input filter rule 100"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    # ── Phase B: IPv6 output filter ───────────────────────────────────────────
+    # OUTPUT hook fires for locally-originated traffic (packets r1 itself generates).
+    # Destination address restricts to r2's ULA so NDP (multicast/link-local dest)
+    # is unaffected.
+    - name: FW-IPV6-001 - Add output filter drop rule on r1 for ICMPv6 to r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 output filter rule 100 action 'drop'"
+          - "set firewall ipv6 output filter rule 100 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 output filter rule 100 destination address '{{ r2_eth1_ip6 }}'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1 locally-originated ICMPv6 to r2 blocked by output filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_eth1_ip6 }} count 3 deadline 5"
+      register: fw_ipv6_out_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert output filter blocks r1-originated ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_ipv6_out_block.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected output filter to block r1-originated ICMPv6 to r2 but ping succeeded.
+          Output: {{ fw_ipv6_out_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Add output filter accept rule 50 on r1 (wins over drop rule 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 output filter rule 50 action 'accept'"
+          - "set firewall ipv6 output filter rule 50 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 output filter rule 50 destination address '{{ r2_eth1_ip6 }}'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1→r2 ICMPv6 accepted after output filter rule 50
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_eth1_ip6 }} count 3 deadline 10"
+      register: fw_ipv6_out_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert output filter accept rule allows r1-originated ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv6_out_accept.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected accept rule 50 to override drop rule 100 in output filter but ping failed.
+          Output: {{ fw_ipv6_out_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Cleanup output filter rules (between phases)
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 output filter rule 50"
+          - "delete firewall ipv6 output filter rule 100"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    # ── Phase C: IPv6 forward filter ─────────────────────────────────────────
+    # FORWARD hook fires for routed traffic passing through r2 from eth1 to eth2.
+    # r1 pings r3 via r2 — packets hit r2's FORWARD chain, not INPUT/OUTPUT.
+    - name: FW-IPV6-001 - Add forward filter drop rule on r2 for ICMPv6 from r1
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 forward filter rule 100 action 'drop'"
+          - "set firewall ipv6 forward filter rule 100 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 forward filter rule 100 source address '{{ r1_eth1_ip6 }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1→r3 ICMPv6 blocked by forward filter on r2
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip6 }} count 3 deadline 5"
+      register: fw_ipv6_fwd_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert forward filter blocks r1→r3 ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_ipv6_fwd_block.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected forward filter to block r1→r3 ICMPv6 but ping succeeded.
+          Output: {{ fw_ipv6_fwd_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Add forward filter accept rule 50 on r2 (wins over drop rule 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 forward filter rule 50 action 'accept'"
+          - "set firewall ipv6 forward filter rule 50 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 forward filter rule 50 source address '{{ r1_eth1_ip6 }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Verify r1→r3 ICMPv6 forwarded (accept rule wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip6 }} count 3 deadline 10"
+      register: fw_ipv6_fwd_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+    - name: FW-IPV6-001 - Assert forward filter accept rule allows r1→r3 ICMPv6
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv6_fwd_accept.stdout[0]"
+        fail_msg: >-
+          FW-IPV6-001: Expected accept rule 50 to override drop rule 100 in forward filter but ping failed.
+          Output: {{ fw_ipv6_fwd_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6]
+
+  always:
+    - name: FW-IPV6-001 - Cleanup input filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 input filter rule 50"
+          - "delete firewall ipv6 input filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Cleanup output filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 output filter rule 50"
+          - "delete firewall ipv6 output filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Cleanup forward filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 forward filter rule 50"
+          - "delete firewall ipv6 forward filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Remove r1 static route to r3 network
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route6 fd00:0:3::/64 next-hop '{{ r2_eth1_ip6 }}'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Remove r3 static route to r1 network
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route6 fd00:0:2::/64 next-hop '{{ r2_eth2_ip6 }}'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Remove r1 eth1 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r1_eth1_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Remove r2 eth1 and eth2 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r2_eth1_ip6 }}/64'"
+          - "delete interfaces ethernet eth2 address '{{ r2_eth2_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Remove r3 eth1 IPv6 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r3_eth1_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]

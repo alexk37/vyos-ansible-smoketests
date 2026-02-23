@@ -1,0 +1,54 @@
+---
+# Release verification - master task list
+# Imports each category's main.yml; category mains import individual tests.
+#
+# Uses import_tasks (static) so all inner task tags are visible to --tags.
+#
+# Run examples:
+#   ansible-playbook release_verification.yml                       # all
+#   ansible-playbook release_verification.yml --tags interfaces     # one category
+#   ansible-playbook release_verification.yml --tags BOND-001       # one test
+#   ansible-playbook release_verification.yml --tags "firewall,nat" # multiple categories
+
+# ── Implemented categories ─────────────────────────────────────────
+- import_tasks: interfaces/main.yml
+  tags: [release_verification, interfaces]
+
+- import_tasks: firewall/main.yml
+  tags: [release_verification, firewall]
+
+# ── Not yet implemented (uncomment as tests are added) ─────────────
+# - import_tasks: nat/main.yml
+#   tags: [release_verification, nat]
+# - import_tasks: protocols/main.yml
+#   tags: [release_verification, protocols]
+# - import_tasks: policy/main.yml
+#   tags: [release_verification, policy]
+# - import_tasks: service/main.yml
+#   tags: [release_verification, service]
+# - import_tasks: system/main.yml
+#   tags: [release_verification, system]
+# - import_tasks: qos/main.yml
+#   tags: [release_verification, qos]
+# - import_tasks: vpn/main.yml
+#   tags: [release_verification, vpn]
+# - import_tasks: ha/main.yml
+#   tags: [release_verification, ha]
+# - import_tasks: loadbalancing/main.yml
+#   tags: [release_verification, loadbalancing]
+# - import_tasks: container/main.yml
+#   tags: [release_verification, container]
+# - import_tasks: pki/main.yml
+#   tags: [release_verification, pki]
+# - import_tasks: vrf/main.yml
+#   tags: [release_verification, vrf]
+# - import_tasks: vpp/main.yml
+#   tags: [release_verification, vpp]
+# - import_tasks: operation/main.yml
+#   tags: [release_verification, operation]
+# - import_tasks: cli/main.yml
+#   tags: [release_verification, cli]
+# - import_tasks: install/main.yml
+#   tags: [release_verification, install]
+# - import_tasks: migration/main.yml
+#   tags: [release_verification, migration]

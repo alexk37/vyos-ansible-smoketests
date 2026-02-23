@@ -1,0 +1,62 @@
+---
+# MACSEC-001: Configure MACsec interface
+# Topology: 1-node
+#   r1: creates macsec0 with static key on eth1, verifies interface present
+# MACsec is a separate interface type in VyOS: "set interfaces macsec <name>"
+# Uses static key mode (no MKA/CAK needed). Source-interface is eth1.
+- block:
+    - name: MACSEC-001 - Configure MACsec interface with static key
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces macsec macsec0 security cipher 'gcm-aes-128'"
+          - "set interfaces macsec macsec0 security encrypt"
+          - "set interfaces macsec macsec0 security static key 'ddd6f4a7be4d8bbaf88b26f10e1c05f7'"
+          - "set interfaces macsec macsec0 security static peer PEER0 mac '00:11:22:33:44:55'"
+          - "set interfaces macsec macsec0 security static peer PEER0 key 'eadcc0aa9cf203f3ce651b332bd6e6c7'"
+          - "set interfaces macsec macsec0 source-interface '{{ rv_eth_test_interfaces[0] }}'"
+          - "set interfaces macsec macsec0 address '{{ rv_ipv4_prefix }}.50/24'"
+      tags: [MACSEC-001, interfaces, macsec]
+
+    - name: MACSEC-001 - Verify MACsec (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces macsec macsec0"
+      register: macsec_show
+      tags: [MACSEC-001, interfaces, macsec]
+
+    - name: MACSEC-001 - Verify MACsec kernel (address)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces kernel macsec0"
+      register: macsec_kernel_show
+      tags: [MACSEC-001, interfaces, macsec]
+
+    - name: MACSEC-001 - Verify MACsec config (cipher and source-interface)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces macsec macsec0'"
+      register: macsec_config
+      tags: [MACSEC-001, interfaces, macsec]
+
+    - name: MACSEC-001 - Assert MACsec interface, address, cipher and source-interface
+      ansible.builtin.assert:
+        that:
+          - macsec_show.stdout is defined
+          - macsec_show.stdout | length > 0
+          - "'macsec0' in macsec_show.stdout[0]"
+          - macsec_kernel_show.stdout is defined
+          - macsec_kernel_show.stdout | length > 0
+          - "rv_ipv4_prefix ~ '.50' in (macsec_kernel_show.stdout | join(' '))"
+          - macsec_config.stdout is defined
+          - "'gcm-aes-128' in macsec_config.stdout[0]"
+          - "rv_eth_test_interfaces[0] in macsec_config.stdout[0]"
+        fail_msg: "MACSEC-001: MACsec config incorrect. show: {{ macsec_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ macsec_config.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [MACSEC-001, interfaces, macsec]
+
+  always:
+    - name: MACSEC-001 - Cleanup MACsec
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces macsec macsec0"]
+      ignore_errors: true
+      tags: [MACSEC-001, interfaces, macsec, cleanup]
+  when: inventory_hostname == 'r1'

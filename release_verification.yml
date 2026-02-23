@@ -1,0 +1,17 @@
+---
+# Release verification playbook - first 25 test cases from vyos-release-verification-test-cases.csv
+# Usage:
+#   ansible-playbook release_verification.yml
+#   ansible-playbook release_verification.yml --tags BOND-001
+#   ansible-playbook release_verification.yml --tags interfaces
+#   2-node tests (tunnel ping, dummy ping): run on pair_1; r1/r2 need rv_peer and rv_underlay_ip in host_vars
+#   ansible-playbook release_verification.yml -l pair_1
+#   ansible-playbook release_verification.yml -l pair_1 --tags 2node
+#   ansible-playbook release_verification.yml -l r1 -e 'ansible_ssh_host=192.0.2.21'
+#   ansible-playbook release_verification.yml --skip-tags cleanup   # leave config (cleanup runs by default, smoketest-style)
+
+- hosts: "{{ target_host | default('vyos_hosts') }}"
+  gather_facts: false
+
+  roles:
+    - release_verification

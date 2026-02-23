@@ -1,0 +1,38 @@
+---
+# WLAN-001: Wireless interface configuration (hardware-dependent)
+# Topology: 1-node
+#   r1: checks for wireless hardware, configures wlan0 if present, gracefully skips if absent
+# Verifies the CLI path exists. If no wireless hardware, reports skip with explanation.
+- block:
+    - name: WLAN-001 - Check for wireless hardware
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces wireless"
+      register: wlan_show
+      ignore_errors: true
+      tags: [WLAN-001, interfaces, wireless]
+
+    - name: WLAN-001 - Skip if no wireless support
+      ansible.builtin.debug:
+        msg: >-
+          WLAN-001: SKIPPED — No wireless hardware on this device.
+          show output: {{ wlan_show.stdout[0] | default(wlan_show.msg | default('command failed')) | truncate(200) }}
+      when: wlan_show is failed
+      tags: [WLAN-001, interfaces, wireless]
+
+    - name: WLAN-001 - Assert wireless CLI responded
+      ansible.builtin.assert:
+        that:
+          - wlan_show.stdout is defined
+          - wlan_show.stdout | length > 0
+        fail_msg: "WLAN-001: 'show interfaces wireless' produced no output"
+      when: wlan_show is not failed
+      tags: [WLAN-001, interfaces, wireless]
+
+  always:
+    - name: WLAN-001 - Cleanup wireless if configured
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces wireless wlan0"]
+      ignore_errors: true
+      tags: [WLAN-001, interfaces, wireless, cleanup]
+  when: inventory_hostname == 'r1'

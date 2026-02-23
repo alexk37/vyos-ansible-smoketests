@@ -1,0 +1,12 @@
+---
+# CLI category - 7 test cases (0 implemented)
+# Tags: cli, CLI-001, CLI-002, CLI-003, CLI-004, CLI-005, CLI-006, CLI-007
+#
+# Pending:
+# - cli_001.yml (CLI-001: Commit and comment)
+# - cli_002.yml (CLI-002: Commit-confirm)
+# - cli_003.yml (CLI-003: Compare)
+# - cli_004.yml (CLI-004: Rollback)
+# - cli_005.yml (CLI-005: Exit discard)
+# - cli_006.yml (CLI-006: Show system commit)
+# - cli_007.yml (CLI-007: Commit-archive)

@@ -1,0 +1,26 @@
+---
+# WG-002: WireGuard key generation and preshared key
+# Topology: 1-node
+#   r1: generates keypair and preshared key, asserts output contains expected fields
+# No config persisted; no cleanup needed.
+- name: WG-002 - Generate WireGuard keys via CLI
+  vyos.vyos.vyos_command:
+    commands:
+      - "generate pki wireguard key-pair"
+      - "generate pki wireguard preshared-key"
+  register: wg_keys
+  changed_when: false
+  when: inventory_hostname == 'r1'
+  tags: [WG-002, interfaces, wireguard]
+
+- name: WG-002 - Assert key generation produced valid output
+  ansible.builtin.assert:
+    that:
+      - wg_keys.stdout is defined
+      - wg_keys.stdout | length >= 2
+      - "'Private key:' in wg_keys.stdout[0]"
+      - "'Public key:' in wg_keys.stdout[0]"
+      - wg_keys.stdout[1] | length >= 40
+    fail_msg: "WG-002: Key generation failed. Got: {{ wg_keys.stdout | default('(no output)') }}"
+  when: inventory_hostname == 'r1'
+  tags: [WG-002, interfaces, wireguard]

@@ -6,5 +6,7 @@ ansible_user               : vyos
 ansible_ssh_pass           : vyos
 ansible_network_os         : vyos.vyos.vyos
 ansible_connection         : ansible.netcommon.network_cli
+ansible_command_timeout    : 30
+ansible_connect_timeout    : 10
 # gather_facts               : false
 

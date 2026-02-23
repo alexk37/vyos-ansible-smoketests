@@ -1,0 +1,66 @@
+---
+# LOOP-001: Loopback interface with OSPF redistribution
+# Topology: 2-node symmetric
+#   r1: adds test IP on loopback, sets up OSPF on eth1 underlay, redistributes connected, pings r2 loopback
+#   r2: adds test IP on loopback, sets up OSPF on eth1 underlay, redistributes connected, pings r1 loopback
+- block:
+    - name: LOOP-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [LOOP-001, interfaces, loopback]
+
+    - name: LOOP-001 - Configure loopback with OSPF redistribution
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces loopback {{ rv_loopback_name }} address '{{ rv_loop_test_ip }}/32'"
+          - "set protocols ospf area 0 network '10.0.2.0/24'"
+          - "set protocols ospf redistribute connected"
+      tags: [LOOP-001, interfaces, loopback]
+
+    - name: LOOP-001 - Verify loopback (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces loopback {{ rv_loopback_name }}"
+      register: loop_show
+      tags: [LOOP-001, interfaces, loopback]
+
+    - name: LOOP-001 - Assert loopback has address
+      ansible.builtin.assert:
+        that:
+          - loop_show.stdout is defined
+          - loop_show.stdout | length > 0
+          - "rv_loopback_name in loop_show.stdout[0]"
+          - "rv_loop_test_ip in loop_show.stdout[0]"
+        fail_msg: "LOOP-001: Loopback or address not found. Got: {{ loop_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [LOOP-001, interfaces, loopback]
+
+    - import_tasks: ../_helpers/wait_route.yml
+      vars:
+        _route_prefix: "{{ hostvars[rv_peer].rv_loop_test_ip }}"
+        _route_test_id: "LOOP-001"
+      tags: [LOOP-001, interfaces, loopback]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_loop_test_ip }}"
+        _ping_test_id: "LOOP-001"
+      tags: [LOOP-001, interfaces, loopback]
+
+  always:
+    - name: LOOP-001 - Cleanup loopback and OSPF
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces loopback {{ rv_loopback_name }} address '{{ rv_loop_test_ip }}/32'"
+          - "delete protocols ospf area 0 network '10.0.2.0/24'"
+          - "delete protocols ospf redistribute connected"
+      ignore_errors: true
+      tags: [LOOP-001, interfaces, loopback, cleanup]
+
+    - name: LOOP-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [LOOP-001, interfaces, loopback, cleanup]
+  when: inventory_hostname in groups['pair_1']

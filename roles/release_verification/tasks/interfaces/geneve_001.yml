@@ -1,0 +1,67 @@
+---
+# GENEVE-001: GENEVE tunnel interface
+# Topology: 2-node symmetric
+#   r1: creates geneve with remote=r2 underlay, same VNI, overlay IP, pings r2
+#   r2: creates geneve with remote=r1 underlay, same VNI, overlay IP, pings r1
+- block:
+    - name: GENEVE-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [GENEVE-001, interfaces, geneve]
+
+    - name: GENEVE-001 - Configure GENEVE
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces geneve {{ rv_geneve_name }} remote '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+          - "set interfaces geneve {{ rv_geneve_name }} vni '{{ rv_geneve_vni }}'"
+          - "set interfaces geneve {{ rv_geneve_name }} address '{{ rv_geneve_overlay_ip }}/24'"
+      tags: [GENEVE-001, interfaces, geneve]
+
+    - name: GENEVE-001 - Verify GENEVE (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces geneve {{ rv_geneve_name }}"
+      register: geneve_show
+      tags: [GENEVE-001, interfaces, geneve]
+
+    - name: GENEVE-001 - Verify GENEVE config (VNI)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces geneve {{ rv_geneve_name }}'"
+      register: geneve_config
+      tags: [GENEVE-001, interfaces, geneve]
+
+    - name: GENEVE-001 - Assert GENEVE present with overlay IP and VNI
+      ansible.builtin.assert:
+        that:
+          - geneve_show.stdout is defined
+          - geneve_show.stdout | length > 0
+          - "rv_geneve_name in geneve_show.stdout[0]"
+          - "rv_geneve_overlay_ip in geneve_show.stdout[0]"
+          - geneve_config.stdout is defined
+          - "'vni' in geneve_config.stdout[0]"
+          - "rv_geneve_vni in geneve_config.stdout[0]"
+        fail_msg: "GENEVE-001: GENEVE config incorrect. Expected overlay {{ rv_geneve_overlay_ip }}, VNI {{ rv_geneve_vni }}. show: {{ geneve_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [GENEVE-001, interfaces, geneve]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_geneve_overlay_ip }}"
+        _ping_test_id: "GENEVE-001"
+      tags: [GENEVE-001, interfaces, geneve]
+
+  always:
+    - name: GENEVE-001 - Cleanup GENEVE
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces geneve {{ rv_geneve_name }}"]
+      ignore_errors: true
+      tags: [GENEVE-001, interfaces, geneve, cleanup]
+
+    - name: GENEVE-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [GENEVE-001, interfaces, geneve, cleanup]
+  when: inventory_hostname in groups['pair_1']

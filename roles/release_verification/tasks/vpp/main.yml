@@ -1,0 +1,25 @@
+---
+# VPP category - 19 test cases (0 implemented)
+# Tags: vpp, VPP-DP-001, VPP-DP-002, VPP-DP-003, VPP-DP-004, VPP-DP-005, VPP-DP-006, VPP-DP-007, VPP-IF-001, VPP-IF-002, VPP-IF-003, VPP-IF-004, VPP-IF-005, VPP-ACL-001, VPP-IPFIX-001, VPP-IPSEC-001, VPP-NAT-001, VPP-NAT-002, VPP-SFLOW-001, VPP-001, VPP-002
+#
+# Pending:
+# - vpp_dp_001.yml (VPP-DP-001: VPP system/core)
+# - vpp_dp_002.yml (VPP-DP-002: VPP buffers/hugepages)
+# - vpp_dp_003.yml (VPP-DP-003: VPP CPU)
+# - vpp_dp_004.yml (VPP-DP-004: VPP interface/LCP)
+# - vpp_dp_005.yml (VPP-DP-005: VPP IPv6/IPsec)
+# - vpp_dp_006.yml (VPP-DP-006: VPP l2learn/logging)
+# - vpp_dp_007.yml (VPP-DP-007: VPP UNIX API socket)
+# - vpp_if_001.yml (VPP-IF-001: VPP bonding/bridge)
+# - vpp_if_002.yml (VPP-IF-002: VPP GRE/IPIP)
+# - vpp_if_003.yml (VPP-IF-003: VPP kernel/LCP)
+# - vpp_if_004.yml (VPP-IF-004: VPP loopback/VXLAN)
+# - vpp_if_005.yml (VPP-IF-005: VPP xconnect)
+# - vpp_acl_001.yml (VPP-ACL-001: VPP ACL)
+# - vpp_ipfix_001.yml (VPP-IPFIX-001: VPP IPFIX)
+# - vpp_ipsec_001.yml (VPP-IPSEC-001: VPP IPsec)
+# - vpp_nat_001.yml (VPP-NAT-001: VPP NAT44)
+# - vpp_nat_002.yml (VPP-NAT-002: VPP CGNAT)
+# - vpp_sflow_001.yml (VPP-SFLOW-001: VPP sFlow)
+# - vpp_001.yml (VPP-001: VPP startup)
+# - vpp_002.yml (VPP-002: VPP troubleshooting)

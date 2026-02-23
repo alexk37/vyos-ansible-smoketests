@@ -1,0 +1,27 @@
+---
+# VTI-001: VTI (IPsec) interface
+# Topology: 1-node
+#   r1: creates vti0 with overlay address, verifies interface present
+# Config-only: VTI requires IPsec SA to forward traffic, so no ping test here.
+# Full IPsec + VTI forwarding would be tested in a dedicated IPsec test.
+- block:
+    - name: VTI-001 - Configure VTI
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces vti {{ rv_vti_name }} address '{{ rv_vti_overlay_ip | default(rv_ipv4_prefix ~ '.70') }}/24'"
+      tags: [VTI-001, interfaces, vti]
+
+    - import_tasks: ../_helpers/show_assert.yml
+      vars:
+        _show_command: "show interfaces vti {{ rv_vti_name }}"
+        _assert_string: "{{ rv_vti_name }}"
+        _assert_test_id: "VTI-001"
+      tags: [VTI-001, interfaces, vti]
+
+  always:
+    - name: VTI-001 - Cleanup VTI
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces vti {{ rv_vti_name }}"]
+      ignore_errors: true
+      tags: [VTI-001, interfaces, vti, cleanup]
+  when: inventory_hostname == 'r1'

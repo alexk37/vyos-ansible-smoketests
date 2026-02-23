@@ -1,0 +1,71 @@
+---
+# L2TPV3-001: L2TPv3 pseudowire interface
+# Topology: 2-node symmetric
+#   r1: creates l2tpv3 with source=rv_underlay_ip, remote=r2, matching tunnel/session IDs, pings r2
+#   r2: creates l2tpv3 with source=rv_underlay_ip, remote=r1, matching tunnel/session IDs, pings r1
+- block:
+    - name: L2TPV3-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+    - name: L2TPV3-001 - Configure L2TPv3
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces l2tpv3 l2tpeth100 source-address '{{ rv_underlay_ip }}'"
+          - "set interfaces l2tpv3 l2tpeth100 remote '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+          - "set interfaces l2tpv3 l2tpeth100 tunnel-id '100'"
+          - "set interfaces l2tpv3 l2tpeth100 peer-tunnel-id '100'"
+          - "set interfaces l2tpv3 l2tpeth100 session-id '100'"
+          - "set interfaces l2tpv3 l2tpeth100 peer-session-id '100'"
+          - "set interfaces l2tpv3 l2tpeth100 address '{{ rv_l2tpv3_overlay_ip }}/24'"
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+    - name: L2TPV3-001 - Verify L2TPv3 (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces l2tpv3 l2tpeth100"
+      register: l2tp_show
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+    - name: L2TPV3-001 - Verify L2TPv3 config (tunnel-id and source-address)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces l2tpv3 l2tpeth100'"
+      register: l2tp_config
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+    - name: L2TPV3-001 - Assert L2TPv3 configured with tunnel parameters
+      ansible.builtin.assert:
+        that:
+          - l2tp_show.stdout is defined
+          - l2tp_show.stdout | length > 0
+          - "'l2tpeth100' in l2tp_show.stdout[0]"
+          - l2tp_config.stdout is defined
+          - "'tunnel-id' in l2tp_config.stdout[0]"
+          - "'100' in l2tp_config.stdout[0]"
+          - "'source-address' in l2tp_config.stdout[0]"
+        fail_msg: "L2TPV3-001: l2tpeth100 config incorrect. Expected tunnel-id 100 and source-address. Got: {{ l2tp_config.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_l2tpv3_overlay_ip }}"
+        _ping_test_id: "L2TPV3-001"
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
+  always:
+    - name: L2TPV3-001 - Cleanup L2TPv3
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces l2tpv3 l2tpeth100"]
+      ignore_errors: true
+      tags: [L2TPV3-001, interfaces, l2tpv3, cleanup]
+
+    - name: L2TPV3-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [L2TPV3-001, interfaces, l2tpv3, cleanup]
+  when: inventory_hostname in groups['pair_1']

@@ -1,5 +1,22 @@
 router_id: "{{ r2_eth1_ip }}"
 
+# Release verification: 2-node tests (pair_1)
+rv_peer: r1
+rv_underlay_ip: "{{ r2_eth1_ip }}"
+rv_ipv6_underlay_ip: "fd00::2"
+rv_dummy_ip: "{{ r2_dum0_ip }}"
+
+# Per-test overlay IPs (r2 side)
+rv_eth_test_ip: 10.30.0.2
+rv_vlan_test_ip: 10.100.0.2
+rv_tunnel_overlay_ip: 198.51.100.2
+rv_geneve_overlay_ip: 198.51.110.2
+rv_l2tpv3_overlay_ip: 198.51.111.2
+rv_vti_overlay_ip: 198.51.112.2
+rv_vxlan_overlay_ip: 198.51.120.2
+rv_wg_overlay_ip: 10.10.10.2
+rv_loop_test_ip: 192.0.2.202
+
 interfaces:
 #  - name: eth0
 #    address: "{{ r2_eth0_ip }}"

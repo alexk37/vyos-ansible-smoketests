@@ -1,0 +1,9 @@
+---
+# Migration category - 4 test cases (0 implemented)
+# Tags: migration, MIG-001, MIG-002, MIG-003, MIG-004
+#
+# Pending:
+# - mig_001.yml (MIG-001: Config migration on load)
+# - mig_002.yml (MIG-002: Migration scripts)
+# - mig_003.yml (MIG-003: Upgrade with existing config)
+# - mig_004.yml (MIG-004: Rollback on migration fail)

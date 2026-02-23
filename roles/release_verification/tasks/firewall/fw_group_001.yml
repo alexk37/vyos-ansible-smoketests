@@ -1,0 +1,74 @@
+---
+# FW-GROUP-001: Firewall address-group and network-group
+# Topology: 2-node symmetric
+#   r1: creates address/network groups with r2's IP, applies in firewall rule, pings r2
+#   r2: creates address/network groups with r1's IP, applies in firewall rule, pings r1
+- block:
+    - name: FW-GROUP-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - name: FW-GROUP-001 - Configure address-group and network-group
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall group address-group {{ rv_fw_group_address }} address '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+          - "set firewall group network-group {{ rv_fw_group_network }} network '{{ hostvars[rv_peer].rv_underlay_ip | regex_replace('\\.[0-9]+$', '.0') }}/24'"
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - name: FW-GROUP-001 - Apply groups in firewall rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv4 input filter rule 100 action 'accept'"
+          - "set firewall ipv4 input filter rule 100 protocol 'icmp'"
+          - "set firewall ipv4 input filter rule 100 source group address-group '{{ rv_fw_group_address }}'"
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - name: FW-GROUP-001 - Verify (show firewall group)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show firewall group"
+      register: fw_group_show
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - name: FW-GROUP-001 - Assert groups present with members
+      ansible.builtin.assert:
+        that:
+          - fw_group_show.stdout is defined
+          - fw_group_show.stdout | length > 0
+          - "rv_fw_group_address in fw_group_show.stdout[0]"
+          - "rv_fw_group_network in fw_group_show.stdout[0]"
+          - "hostvars[rv_peer].rv_underlay_ip in fw_group_show.stdout[0]"
+        fail_msg: "FW-GROUP-001: Groups or members not found. Expected groups {{ rv_fw_group_address }}, {{ rv_fw_group_network }} with IP {{ hostvars[rv_peer].rv_underlay_ip }}. Got: {{ fw_group_show.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
+        _ping_test_id: "FW-GROUP-001"
+      tags: [FW-GROUP-001, firewall, groups]
+
+  always:
+    - name: FW-GROUP-001 - Cleanup firewall rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter rule 100"
+      ignore_errors: true
+      tags: [FW-GROUP-001, firewall, groups, cleanup]
+
+    - name: FW-GROUP-001 - Cleanup firewall groups
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall group address-group {{ rv_fw_group_address }}"
+          - "delete firewall group network-group {{ rv_fw_group_network }}"
+      ignore_errors: true
+      tags: [FW-GROUP-001, firewall, groups, cleanup]
+
+    - name: FW-GROUP-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GROUP-001, firewall, groups, cleanup]
+  when: inventory_hostname in groups['pair_1']

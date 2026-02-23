@@ -1,0 +1,71 @@
+---
+# Release verification - role variables (auto-loaded by Ansible)
+# Override in group_vars/host_vars as needed for your topology.
+#
+# Organized by category. Add new sections as categories are implemented.
+
+# ─── Common ──────────────────────────────────────────────────────────
+rv_ipv4_prefix: "192.0.2"
+rv_ipv6_prefix: "2001:db8"
+
+# ─── Interfaces ─────────────────────────────────────────────────────
+rv_eth_mgmt: "eth0"
+rv_eth_test_interfaces: ["eth1", "eth2", "eth3"]
+
+rv_dummy_name: "dum0"
+rv_loopback_name: "lo"
+rv_bond_name: "bond0"
+rv_bridge_name: "br0"
+rv_vxlan_name: "vxlan0"
+rv_vxlan_vni: "10"
+rv_vxlan_remote: "127.0.2.1"
+rv_tunnel_name: "tun0"
+rv_tunnel_local: "192.0.2.1"
+rv_tunnel_remote: "192.0.2.2"
+rv_wireguard_name: "wg0"
+rv_wireguard_port: "51820"
+rv_vti_name: "vti0"
+rv_pppoe_name: "pppoe0"
+rv_peth_pair: ["peth0", "peth1"]
+rv_veth_name: "veth0"
+rv_geneve_name: "gnv0"
+rv_geneve_remote: "192.0.2.1"
+rv_geneve_vni: "10"
+rv_l2tpv3_name: "l2tpv3-1"
+rv_sstp_name: "sstp0"
+rv_openvpn_name: "vtun0"
+
+# ─── Firewall ───────────────────────────────────────────────────────
+rv_fw_name: "rv_test"
+rv_fw_group_network: "rv_net"
+rv_fw_group_address: "rv_addr"
+rv_fw_group_port: "rv_port"
+rv_fw_group_interface: "rv_if"
+rv_fw_group_ipv6_addr: "rv_ipv6"
+rv_fw_group_domain: "rv_domain"
+
+# ─── NAT (placeholder) ─────────────────────────────────────────────
+# rv_nat_source_address: "10.0.0.0/24"
+# rv_nat_translation_address: "203.0.113.1"
+
+# ─── Protocols (placeholder) ────────────────────────────────────────
+# rv_bgp_asn: "65001"
+# rv_bgp_peer_asn: "65002"
+# rv_ospf_area: "0"
+# rv_ospf_network: "10.0.0.0/24"
+
+# ─── Services (placeholder) ─────────────────────────────────────────
+# rv_dhcp_pool_name: "rv_pool"
+# rv_dhcp_subnet: "10.100.0.0/24"
+# rv_dns_listen: "{{ rv_ipv4_prefix }}.1"
+
+# ─── VPN (placeholder) ──────────────────────────────────────────────
+# rv_ipsec_peer: "{{ rv_ipv4_prefix }}.2"
+# rv_ipsec_psk: "rv_test_psk_1234567890"
+
+# ─── HA (placeholder) ───────────────────────────────────────────────
+# rv_vrrp_group: "1"
+# rv_vrrp_vip: "10.0.0.254"
+
+# ─── VPP (placeholder) ──────────────────────────────────────────────
+# rv_vpp_interface: "eth2"

@@ -1,0 +1,10 @@
+---
+# VRF category - 5 test cases (0 implemented)
+# Tags: vrf, VRF-001, VRF-002, VRF-003, VRF-004, VRF-005
+#
+# Pending:
+# - vrf_001.yml (VRF-001: VRF name/table/interface)
+# - vrf_002.yml (VRF-002: VRF protocol)
+# - vrf_003.yml (VRF-003: VRF service)
+# - vrf_004.yml (VRF-004: show/ping vrf)
+# - vrf_005.yml (VRF-005: L3VPN route leaking)

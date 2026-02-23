@@ -1,0 +1,49 @@
+---
+# VETH-001: Virtual ethernet interface (veth pair with peer-name)
+# Topology: 1-node
+#   r1: creates veth0/veth1 pair, verifies both endpoints present
+- block:
+    - name: VETH-001 - Configure virtual ethernet pair (veth0 <-> veth1)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces virtual-ethernet veth0 peer-name 'veth1'"
+          - "set interfaces virtual-ethernet veth1 peer-name 'veth0'"
+          - "set interfaces virtual-ethernet veth0 address '{{ rv_ipv4_prefix }}.60/24'"
+      tags: [VETH-001, interfaces, virtual-ethernet]
+
+    - name: VETH-001 - Verify virtual-ethernet veth0 (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces virtual-ethernet veth0"
+      register: veth_show
+      tags: [VETH-001, interfaces, virtual-ethernet]
+
+    - name: VETH-001 - Verify virtual-ethernet veth1 (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces virtual-ethernet veth1"
+      register: veth1_show
+      tags: [VETH-001, interfaces, virtual-ethernet]
+
+    - name: VETH-001 - Assert virtual-ethernet pair present with address
+      ansible.builtin.assert:
+        that:
+          - veth_show.stdout is defined
+          - veth_show.stdout | length > 0
+          - "'veth0' in veth_show.stdout[0]"
+          - "rv_ipv4_prefix ~ '.60' in veth_show.stdout[0]"
+          - veth1_show.stdout is defined
+          - veth1_show.stdout | length > 0
+          - "'veth1' in veth1_show.stdout[0]"
+        fail_msg: "VETH-001: Virtual ethernet pair not found. Expected veth0 with {{ rv_ipv4_prefix }}.60 and veth1. veth0: {{ veth_show.stdout[0] | default('(no output)') | truncate(200) }} veth1: {{ veth1_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [VETH-001, interfaces, virtual-ethernet]
+
+  always:
+    - name: VETH-001 - Cleanup virtual-ethernet
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces virtual-ethernet veth0"
+          - "delete interfaces virtual-ethernet veth1"
+      ignore_errors: true
+      tags: [VETH-001, interfaces, virtual-ethernet, cleanup]
+  when: inventory_hostname == 'r1'

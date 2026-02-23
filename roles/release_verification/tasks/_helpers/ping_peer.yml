@@ -1,0 +1,30 @@
+---
+# Shared helper: Ping a peer IP and assert 0% packet loss.
+#
+# Required vars (set via import_tasks vars:):
+#   _ping_target   - IP address to ping
+#   _ping_test_id  - test case ID for messages (e.g. "ETH-001")
+#
+# Optional vars:
+#   _ping_count     - number of pings (default 3)
+#   _ping_deadline  - max seconds for entire ping run (default 5)
+#
+# NOTE: No _ping_condition parameter. If you import this helper, the ping
+# MUST run. Guard the import_tasks itself with `when:` if needed — that way
+# the skip is visible in Ansible output rather than hidden inside the helper.
+
+- name: "{{ _ping_test_id }} - Ping {{ _ping_target }}"
+  vyos.vyos.vyos_command:
+    commands:
+      - "ping {{ _ping_target }} count {{ _ping_count | default(3) }} deadline {{ _ping_deadline | default(10) }}"
+  register: _ping_result
+
+- name: "{{ _ping_test_id }} - Assert 0% packet loss"
+  ansible.builtin.assert:
+    that:
+      - _ping_result.stdout is defined
+      - _ping_result.stdout | length > 0
+      - "', 0% packet loss' in _ping_result.stdout[0]"
+    fail_msg: >-
+      {{ _ping_test_id }}: Ping to {{ _ping_target }} failed.
+      Output: {{ _ping_result.stdout[0] | default('(no output)') }}

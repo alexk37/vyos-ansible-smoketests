@@ -1,10 +1,30 @@
 ---
 # R1
-r1_eth0_ip: 192.168.122.11
-r1_eth1_ip: 10.0.2.11
+r1_eth0_ip: 192.168.1.40
+r1_eth1_ip: 10.0.2.1
 r1_dum0_ip: 203.0.113.11
 
 # R2
-r2_eth0_ip: 192.168.122.14
-r2_eth1_ip: 10.0.2.14
+r2_eth0_ip: 192.168.1.41
+r2_eth1_ip: 10.0.2.2
+r2_eth2_ip: 10.0.3.2
 r2_dum0_ip: 203.0.113.14
+
+# R3
+r3_eth0_ip: 192.168.1.42
+r3_eth1_ip: 10.0.3.3
+r3_dum0_ip: 203.0.113.17
+
+# Bridge test — single flat L2 subnet (10.40.0.0/24), no routing needed
+# r2 bridges eth1+eth2 as br0; r1 and r3 appear on the same L2 segment
+r1_bridge_ip: "10.40.0.1"
+r2_bridge_ip: "10.40.0.2"
+r3_bridge_ip: "10.40.0.3"
+
+# IPv6 — trio link addresses (mirrors the IPv4 10.0.2.x / 10.0.3.x scheme)
+# r1-r2 link (eth1): fd00:0:2::/64
+r1_eth1_ip6: "fd00:0:2::1"
+r2_eth1_ip6: "fd00:0:2::2"
+# r2-r3 link (r2 eth2, r3 eth1): fd00:0:3::/64
+r2_eth2_ip6: "fd00:0:3::2"
+r3_eth1_ip6: "fd00:0:3::3"

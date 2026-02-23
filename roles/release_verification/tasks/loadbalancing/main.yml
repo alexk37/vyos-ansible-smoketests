@@ -1,0 +1,7 @@
+---
+# Loadbalancing category - 2 test cases (0 implemented)
+# Tags: loadbalancing, LB-WAN-001, LB-HA-001
+#
+# Pending:
+# - lb_wan_001.yml (LB-WAN-001: WAN load balancing)
+# - lb_ha_001.yml (LB-HA-001: HAProxy service)

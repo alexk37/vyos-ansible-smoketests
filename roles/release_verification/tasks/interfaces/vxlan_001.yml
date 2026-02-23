@@ -1,0 +1,67 @@
+---
+# VXLAN-001: VXLAN tunnel interface
+# Topology: 2-node symmetric
+#   r1: creates vxlan with remote=r2 underlay, same VNI, overlay IP, pings r2
+#   r2: creates vxlan with remote=r1 underlay, same VNI, overlay IP, pings r1
+- block:
+    - name: VXLAN-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [VXLAN-001, interfaces, vxlan]
+
+    - name: VXLAN-001 - Configure VXLAN
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces vxlan {{ rv_vxlan_name }} vni '{{ rv_vxlan_vni }}'"
+          - "set interfaces vxlan {{ rv_vxlan_name }} remote '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+          - "set interfaces vxlan {{ rv_vxlan_name }} address '{{ rv_vxlan_overlay_ip }}/24'"
+      tags: [VXLAN-001, interfaces, vxlan]
+
+    - name: VXLAN-001 - Verify VXLAN (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces vxlan {{ rv_vxlan_name }}"
+      register: vxlan_show
+      tags: [VXLAN-001, interfaces, vxlan]
+
+    - name: VXLAN-001 - Verify VXLAN config (VNI)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces vxlan {{ rv_vxlan_name }}'"
+      register: vxlan_config
+      tags: [VXLAN-001, interfaces, vxlan]
+
+    - name: VXLAN-001 - Assert VXLAN present with overlay IP and VNI
+      ansible.builtin.assert:
+        that:
+          - vxlan_show.stdout is defined
+          - vxlan_show.stdout | length > 0
+          - "rv_vxlan_name in vxlan_show.stdout[0]"
+          - "rv_vxlan_overlay_ip in vxlan_show.stdout[0]"
+          - vxlan_config.stdout is defined
+          - "'vni' in vxlan_config.stdout[0]"
+          - "rv_vxlan_vni in vxlan_config.stdout[0]"
+        fail_msg: "VXLAN-001: VXLAN config incorrect. Expected overlay {{ rv_vxlan_overlay_ip }}, VNI {{ rv_vxlan_vni }}. show: {{ vxlan_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [VXLAN-001, interfaces, vxlan]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_vxlan_overlay_ip }}"
+        _ping_test_id: "VXLAN-001"
+      tags: [VXLAN-001, interfaces, vxlan]
+
+  always:
+    - name: VXLAN-001 - Cleanup VXLAN
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces vxlan {{ rv_vxlan_name }}"]
+      ignore_errors: true
+      tags: [VXLAN-001, interfaces, vxlan, cleanup]
+
+    - name: VXLAN-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [VXLAN-001, interfaces, vxlan, cleanup]
+  when: inventory_hostname in groups['pair_1']

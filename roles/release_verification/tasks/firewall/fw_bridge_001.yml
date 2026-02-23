@@ -1,0 +1,356 @@
+---
+# FW-BRIDGE-001: Bridge firewall — input, output, forward, prerouting hooks
+# Topology: 3-node asymmetric
+#   r1: left host — eth3 address 10.40.0.1/24 (direct cable to r2 eth3)
+#   r2: bridge — br0 with eth3+eth2 as members, br0 address 10.40.0.2/24
+#   r3: right host — eth1 address 10.40.0.3/24 (via shared switch on r2 eth2)
+#
+# WHY eth3 FOR THE r1↔r2 LINK:
+#   Bridge FORWARD fires when a frame enters one member port and exits another.
+#   r1 eth3 is directly cabled to r2 eth3 (bypasses the shared lab switch).
+#   r2 eth2 connects via the shared switch to r3 eth1.
+#   These two bridge member ports are on physically isolated segments, so bridging
+#   eth3+eth2 cannot create an L2 loop — frames exiting eth2 to the switch cannot
+#   echo back to eth3, which is not connected to that switch.
+#
+# VyOS unit tests (smoketest/scripts/cli/test_firewall.py:test_bridge_firewall) already cover:
+#   - CLI → nftables table 'bridge vyos_filter': VYOS_FORWARD_filter, VYOS_INPUT_filter,
+#     VYOS_OUTPUT_filter, VYOS_PREROUTING_filter — all hooks, chains, and rule translation
+#   - VLAN id/priority, MAC source, IP source/dest, state, ethernet-type matching
+#   - Actions: accept, drop, jump, notrack, set connection-mark, set ttl
+#   - Named chains, jump targets, apply-to-bridged-traffic sysctl
+#   - All single-node synthetic — no actual traffic flows through a real bridge
+#
+# This test adds what unit tests cannot cover:
+#   - FORWARD: real ICMP blocked/accepted crossing the bridge (r1→r3 through br0)
+#   - FORWARD rule ordering: accept rule 50 overrides drop rule 100 for live traffic
+#   - INPUT: real ICMP to bridge IP blocked/accepted (r1 pings br0 IP)
+#   - INPUT rule ordering: accept rule 50 overrides drop rule 100
+#   - OUTPUT: bridge-originated ICMP blocked/accepted (r2 pings r1 from br0)
+#   - OUTPUT rule ordering: accept rule 50 overrides drop rule 100
+#   - PREROUTING: configuration commits on live hardware (chain creation verified)
+- block:
+    # ── Phase 1: Underlay setup ──────────────────────────────────────────────
+    - name: FW-BRIDGE-001 - Configure r1 eth3 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth3 address '{{ r1_bridge_ip }}/24'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Configure r2 bridge br0 with eth3 and eth2 members
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces bridge br0 member interface eth3"
+          - "set interfaces bridge br0 member interface eth2"
+          - "set interfaces bridge br0 address '{{ r2_bridge_ip }}/24'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Configure r3 eth1 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r3_bridge_ip }}/24'"
+      when: inventory_hostname == 'r3'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    # ── Phase 2: Baseline connectivity ────────────────────────────────────────
+    # r1→r3 crosses the bridge (eth3→eth2). Validates the isolated link is up.
+    - name: FW-BRIDGE-001 - Verify baseline r1→r3 ICMP crosses bridge
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_bridge_ip }} count 3 deadline 10"
+      register: fw_bridge_baseline
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert baseline r1→r3 ICMP crosses bridge
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_bridge_baseline.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Baseline r1→r3 ICMP failed — bridge not forwarding.
+          Check that r1 eth3 is directly cabled to r2 eth3 and that br0 has both members.
+          Output: {{ fw_bridge_baseline.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    # ── Phase A: Bridge FORWARD filter ───────────────────────────────────────
+    # FORWARD hook fires when a frame enters eth3 (r1 side) and exits eth2 (r3 side).
+    - name: FW-BRIDGE-001 - Add bridge forward filter drop rule for r1 source
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge forward filter rule 100 action 'drop'"
+          - "set firewall bridge forward filter rule 100 source address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r1→r3 ICMP blocked by bridge forward filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_bridge_ip }} count 3 deadline 5"
+      register: fw_bridge_fwd_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge forward filter blocks r1→r3 ICMP
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_bridge_fwd_block.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected bridge forward filter to block r1→r3 ICMP but ping succeeded.
+          Output: {{ fw_bridge_fwd_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Add bridge forward filter accept rule 50 (wins over drop 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge forward filter rule 50 action 'accept'"
+          - "set firewall bridge forward filter rule 50 source address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r1→r3 ICMP accepted (forward rule 50 wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_bridge_ip }} count 3 deadline 10"
+      register: fw_bridge_fwd_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge forward accept rule allows r1→r3 ICMP
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_bridge_fwd_accept.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in forward filter.
+          Output: {{ fw_bridge_fwd_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge forward filter rules (between phases)
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge forward filter rule 50"
+          - "delete firewall bridge forward filter rule 100"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    # ── Phase B: Bridge INPUT filter ─────────────────────────────────────────
+    # INPUT hook fires for frames destined to the bridge device itself (br0 IP).
+    # r1 pings br0 IP (10.40.0.2); frame enters eth3 with dst MAC = br0 MAC → INPUT chain.
+    - name: FW-BRIDGE-001 - Add bridge input filter drop rule for r1 source
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge input filter rule 100 action 'drop'"
+          - "set firewall bridge input filter rule 100 source address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r1→br0 ICMP blocked by bridge input filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_bridge_ip }} count 3 deadline 5"
+      register: fw_bridge_in_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge input filter blocks r1→br0 ICMP
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_bridge_in_block.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected bridge input filter to block r1→br0 ICMP but ping succeeded.
+          Output: {{ fw_bridge_in_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Add bridge input filter accept rule 50 (wins over drop 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge input filter rule 50 action 'accept'"
+          - "set firewall bridge input filter rule 50 source address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r1→br0 ICMP accepted (input rule 50 wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r2_bridge_ip }} count 3 deadline 10"
+      register: fw_bridge_in_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge input accept rule allows r1→br0 ICMP
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_bridge_in_accept.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in input filter.
+          Output: {{ fw_bridge_in_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge input filter rules (between phases)
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge input filter rule 50"
+          - "delete firewall bridge input filter rule 100"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    # ── Phase C: Bridge OUTPUT filter ────────────────────────────────────────
+    # OUTPUT hook fires for frames generated by the bridge device itself (br0).
+    # r2 pings r1 from br0 (10.40.0.2 → 10.40.0.1) → OUTPUT chain fires on r2.
+    - name: FW-BRIDGE-001 - Add bridge output filter drop rule for traffic to r1
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge output filter rule 100 action 'drop'"
+          - "set firewall bridge output filter rule 100 destination address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r2→r1 ICMP blocked by bridge output filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r1_bridge_ip }} count 3 deadline 5"
+      register: fw_bridge_out_block
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge output filter blocks r2→r1 ICMP
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_bridge_out_block.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected bridge output filter to block r2→r1 ICMP but ping succeeded.
+          Output: {{ fw_bridge_out_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Add bridge output filter accept rule 50 (wins over drop 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge output filter rule 50 action 'accept'"
+          - "set firewall bridge output filter rule 50 destination address '{{ r1_bridge_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify r2→r1 ICMP accepted (output rule 50 wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r1_bridge_ip }} count 3 deadline 10"
+      register: fw_bridge_out_accept
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert bridge output accept rule allows r2→r1 ICMP
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_bridge_out_accept.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in output filter.
+          Output: {{ fw_bridge_out_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge output filter rules (between phases)
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge output filter rule 50"
+          - "delete firewall bridge output filter rule 100"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    # ── Phase D: Bridge PREROUTING (config verification) ──────────────────────
+    # PREROUTING fires on all incoming frames before the forward/input decision.
+    # notrack verification requires conntrack inspection — config verification only.
+    - name: FW-BRIDGE-001 - Configure bridge prerouting filter rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge prerouting filter rule 10 action 'accept'"
+          - "set firewall bridge prerouting filter rule 10 ethernet-type 'arp'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Verify all four bridge hooks in config
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'firewall bridge'"
+      register: fw_bridge_config
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+    - name: FW-BRIDGE-001 - Assert all four bridge hooks present in config
+      ansible.builtin.assert:
+        that:
+          - "'bridge forward filter' in fw_bridge_config.stdout[0]"
+          - "'bridge input filter' in fw_bridge_config.stdout[0]"
+          - "'bridge output filter' in fw_bridge_config.stdout[0]"
+          - "'bridge prerouting filter' in fw_bridge_config.stdout[0]"
+        fail_msg: >-
+          FW-BRIDGE-001: Expected all four bridge hooks in config.
+          Got: {{ fw_bridge_config.stdout[0] | default('(no output)') | truncate(400) }}
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge]
+
+  always:
+    - name: FW-BRIDGE-001 - Cleanup bridge forward filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge forward filter rule 50"
+          - "delete firewall bridge forward filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge input filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge input filter rule 50"
+          - "delete firewall bridge input filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge output filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge output filter rule 50"
+          - "delete firewall bridge output filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Cleanup bridge prerouting filter rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge prerouting filter rule 10"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Remove r2 bridge br0
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces bridge br0"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Remove r1 eth3 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth3 address '{{ r1_bridge_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Remove r3 eth1 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r3_bridge_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]

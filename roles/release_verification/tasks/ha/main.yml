@@ -1,0 +1,12 @@
+---
+# HA category - 7 test cases (0 implemented)
+# Tags: ha, HA-VRRP-001, HA-VRRP-002, HA-VRRP-003, HA-VRRP-004, HA-VRRP-005, HA-VS-001, HA-VS-002
+#
+# Pending:
+# - ha_vrrp_001.yml (HA-VRRP-001: VRRP group)
+# - ha_vrrp_002.yml (HA-VRRP-002: VRRP priority/preemption)
+# - ha_vrrp_003.yml (HA-VRRP-003: VRRP sync-group)
+# - ha_vrrp_004.yml (HA-VRRP-004: VRRP health-check)
+# - ha_vrrp_005.yml (HA-VRRP-005: VRRP unicast)
+# - ha_vs_001.yml (HA-VS-001: Virtual server)
+# - ha_vs_002.yml (HA-VS-002: VS forward-method)

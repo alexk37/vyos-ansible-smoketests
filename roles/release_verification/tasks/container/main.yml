@@ -1,0 +1,8 @@
+---
+# Container category - 3 test cases (0 implemented)
+# Tags: container, CONT-001, CONT-002, CONT-003
+#
+# Pending:
+# - cont_001.yml (CONT-001: Container image/registry)
+# - cont_002.yml (CONT-002: Container network/volume)
+# - cont_003.yml (CONT-003: Container start/stop)

@@ -1,0 +1,34 @@
+---
+# Firewall category - 11 test cases (9 implemented, 2 pending)
+# Tags: firewall, <subcategory>, <TEST-ID>
+
+- import_tasks: fw_global_001.yml
+  tags: [firewall, global-options, FW-GLOBAL-001]
+
+- import_tasks: fw_group_001.yml
+  tags: [firewall, groups, FW-GROUP-001]
+
+- import_tasks: fw_group_002.yml
+  tags: [firewall, groups, FW-GROUP-002]
+
+- import_tasks: fw_group_003.yml
+  tags: [firewall, groups, FW-GROUP-003]
+
+- import_tasks: fw_ipv4_001.yml
+  tags: [firewall, ipv4, FW-IPV4-001]
+
+- import_tasks: fw_ipv4_002.yml
+  tags: [firewall, ipv4, FW-IPV4-002]
+
+- import_tasks: fw_ipv4_003.yml
+  tags: [firewall, ipv4, FW-IPV4-003]
+
+- import_tasks: fw_ipv6_001.yml
+  tags: [firewall, ipv6, FW-IPV6-001]
+
+- import_tasks: fw_bridge_001.yml
+  tags: [firewall, bridge, FW-BRIDGE-001]
+
+# Pending:
+# - fw_flow_001.yml   (FW-FLOW-001: Flowtable configuration)
+# - fw_zone_001.yml   (FW-ZONE-001: Zone-based firewall)

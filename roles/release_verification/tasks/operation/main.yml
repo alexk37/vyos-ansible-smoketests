@@ -1,0 +1,10 @@
+---
+# Operation category - 5 test cases (0 implemented)
+# Tags: operation, OP-INFO-001, OP-BOOT-001, OP-UPG-001, OP-UPG-002, OP-PWR-001
+#
+# Pending:
+# - op_info_001.yml (OP-INFO-001: Show commands)
+# - op_boot_001.yml (OP-BOOT-001: Boot options)
+# - op_upg_001.yml (OP-UPG-001: Upgrade)
+# - op_upg_002.yml (OP-UPG-002: Rollback)
+# - op_pwr_001.yml (OP-PWR-001: Password recovery)

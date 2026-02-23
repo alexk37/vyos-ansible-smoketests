@@ -1,0 +1,48 @@
+---
+# BRIDGE-001: Configure bridge and add member interfaces
+# Topology: 1-node
+#   r1: creates br0 with eth2 as member, verifies bridge and member presence
+# Self-contained: uses eth2 as bridge member. Cleanup releases it.
+- block:
+    - name: BRIDGE-001 - Configure bridge with member
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces bridge {{ rv_bridge_name }} address '{{ rv_ipv4_prefix }}.1/24'"
+          - "set interfaces bridge {{ rv_bridge_name }} stp"
+          - "set interfaces bridge {{ rv_bridge_name }} member interface '{{ rv_eth_test_interfaces[1] }}'"
+      tags: [BRIDGE-001, interfaces, bridge]
+
+    - name: BRIDGE-001 - Verify bridge (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces bridge {{ rv_bridge_name }}"
+      register: bridge_show
+      tags: [BRIDGE-001, interfaces, bridge]
+
+    - name: BRIDGE-001 - Verify bridge config (member and STP)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces bridge {{ rv_bridge_name }}'"
+      register: bridge_config
+      tags: [BRIDGE-001, interfaces, bridge]
+
+    - name: BRIDGE-001 - Assert bridge present with address, STP, and member interface
+      ansible.builtin.assert:
+        that:
+          - bridge_show.stdout is defined
+          - bridge_show.stdout | length > 0
+          - "rv_bridge_name in bridge_show.stdout[0]"
+          - "rv_ipv4_prefix ~ '.1' in bridge_show.stdout[0]"
+          - bridge_config.stdout is defined
+          - "'stp' in bridge_config.stdout[0]"
+          - "rv_eth_test_interfaces[1] in bridge_config.stdout[0]"
+        fail_msg: "BRIDGE-001: Bridge config incorrect. Expected STP and member {{ rv_eth_test_interfaces[1] }}. show: {{ bridge_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ bridge_config.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [BRIDGE-001, interfaces, bridge]
+
+  always:
+    - name: BRIDGE-001 - Cleanup bridge
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces bridge {{ rv_bridge_name }}"]
+      ignore_errors: true
+      tags: [BRIDGE-001, interfaces, bridge, cleanup]
+  when: inventory_hostname == 'r1'

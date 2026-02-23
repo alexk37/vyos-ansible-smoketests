@@ -1,0 +1,28 @@
+---
+# Shared helper: Run a show command and assert expected string is in output.
+#
+# Required vars:
+#   _show_command    - VyOS show command to run
+#   _assert_string   - string that must appear in stdout
+#   _assert_test_id  - test case ID for messages
+#
+# Optional vars:
+#   _assert_msg      - custom failure message
+#
+# NOTE: No _show_condition parameter. Guard the import_tasks with `when:` instead.
+
+- name: "{{ _assert_test_id }} - Show ({{ _show_command | truncate(50) }})"
+  vyos.vyos.vyos_command:
+    commands:
+      - "{{ _show_command }}"
+  register: _show_result
+
+- name: "{{ _assert_test_id }} - Assert '{{ _assert_string }}' in output"
+  ansible.builtin.assert:
+    that:
+      - _show_result.stdout is defined
+      - _show_result.stdout | length > 0
+      - "_assert_string in _show_result.stdout[0]"
+    fail_msg: >-
+      {{ _assert_msg | default(_assert_test_id ~ ': Expected "' ~ _assert_string ~ '" not found.') }}
+      Got: {{ _show_result.stdout[0] | default('(no output)') | truncate(200) }}

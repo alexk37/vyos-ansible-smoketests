@@ -1,0 +1,41 @@
+---
+# ETH-001: Ethernet interface addressing and connectivity
+# Topology: 2-node symmetric
+#   r1: assigns rv_eth_test_ip/30 on eth1, pings r2
+#   r2: assigns rv_eth_test_ip/30 on eth1, pings r1
+- block:
+    - name: ETH-001 - Add test address on ethernet
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet {{ rv_eth_test_interfaces[0] }} address '{{ rv_eth_test_ip }}/30'"
+      tags: [ETH-001, interfaces, ethernet]
+
+    - name: ETH-001 - Verify ethernet (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces ethernet {{ rv_eth_test_interfaces[0] }}"
+      register: eth_show
+      tags: [ETH-001, interfaces, ethernet]
+
+    - name: ETH-001 - Assert address in show output
+      ansible.builtin.assert:
+        that:
+          - eth_show.stdout is defined
+          - eth_show.stdout | length > 0
+          - "rv_eth_test_ip in eth_show.stdout[0]"
+        fail_msg: "ETH-001: Test address not found. Got: {{ eth_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [ETH-001, interfaces, ethernet]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_eth_test_ip }}"
+        _ping_test_id: "ETH-001"
+      tags: [ETH-001, interfaces, ethernet]
+
+  always:
+    - name: ETH-001 - Cleanup test address
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces ethernet {{ rv_eth_test_interfaces[0] }} address '{{ rv_eth_test_ip }}/30'"]
+      ignore_errors: true
+      tags: [ETH-001, interfaces, ethernet, cleanup]
+  when: inventory_hostname in groups['pair_1']

@@ -1,0 +1,59 @@
+---
+# FW-GLOBAL-001: Firewall global options (all-ping, broadcast-ping)
+# Topology: 2-node symmetric
+#   r1: enables global ICMP options, pings r2 underlay to verify ICMP allowed
+#   r2: enables global ICMP options, pings r1 underlay to verify ICMP allowed
+- block:
+    - name: FW-GLOBAL-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Set firewall global options
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall global-options all-ping 'enable'"
+          - "set firewall global-options broadcast-ping 'enable'"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Verify global options in config
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep global-options"
+      register: fw_global_show
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Assert global options in output set to enable
+      ansible.builtin.assert:
+        that:
+          - fw_global_show.stdout is defined
+          - fw_global_show.stdout | length > 0
+          - "'all-ping' in fw_global_show.stdout[0]"
+          - "'broadcast-ping' in fw_global_show.stdout[0]"
+          - "'enable' in fw_global_show.stdout[0]"
+        fail_msg: "FW-GLOBAL-001: Global options not found or not enabled. Got: {{ fw_global_show.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
+        _ping_test_id: "FW-GLOBAL-001"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+  always:
+    - name: FW-GLOBAL-001 - Cleanup global options
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall global-options all-ping"
+          - "delete firewall global-options broadcast-ping"
+      ignore_errors: true
+      tags: [FW-GLOBAL-001, firewall, global-options, cleanup]
+
+    - name: FW-GLOBAL-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GLOBAL-001, firewall, global-options, cleanup]
+  when: inventory_hostname in groups['pair_1']

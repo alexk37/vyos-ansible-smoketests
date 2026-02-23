@@ -1,0 +1,10 @@
+---
+# NAT category - 5 test cases (0 implemented)
+# Tags: nat, NAT44-001, NAT44-002, NAT64-001, NAT66-001, CGNAT-001
+#
+# Pending:
+# - nat44_001.yml (NAT44-001: Source NAT masquerade/translation)
+# - nat44_002.yml (NAT44-002: Destination NAT rules)
+# - nat64_001.yml (NAT64-001: NAT64 configuration)
+# - nat66_001.yml (NAT66-001: NAT66 IPv6-to-IPv6 rules)
+# - cgnat_001.yml (CGNAT-001: CGNAT configuration)

@@ -1,0 +1,13 @@
+---
+# QoS category - 8 test cases (0 implemented)
+# Tags: qos, QOS-001, QOS-002, QOS-003, QOS-004, QOS-005, QOS-006, QOS-007, QOS-008
+#
+# Pending:
+# - qos_001.yml (QOS-001: Traffic policy apply)
+# - qos_002.yml (QOS-002: Drop-tail and fair-queue)
+# - qos_003.yml (QOS-003: FQ-CoDel and limiter)
+# - qos_004.yml (QOS-004: Shaper HTB)
+# - qos_005.yml (QOS-005: Priority queue and DRR)
+# - qos_006.yml (QOS-006: Rate-control and network-emulator)
+# - qos_007.yml (QOS-007: Random-detect RED and CAKE)
+# - qos_008.yml (QOS-008: Traffic-match-group and DSCP)

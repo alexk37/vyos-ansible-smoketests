@@ -1,0 +1,76 @@
+---
+# DUMMY-001: Dummy interface with OSPF redistribution
+# Topology: 2-node symmetric
+#   r1: creates dummy with rv_dummy_ip, sets up OSPF on eth1 underlay, redistributes connected, pings r2 dummy
+#   r2: creates dummy with rv_dummy_ip, sets up OSPF on eth1 underlay, redistributes connected, pings r1 dummy
+- block:
+    - name: DUMMY-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - name: DUMMY-001 - Set up OSPF for underlay + redistribute connected
+      vyos.vyos.vyos_config:
+        lines:
+          - "set protocols ospf area 0 network '10.0.2.0/24'"
+          - "set protocols ospf redistribute connected"
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - name: DUMMY-001 - Create dummy interface
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces dummy {{ rv_dummy_name }} address '{{ rv_dummy_ip }}/32'"
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - name: DUMMY-001 - Verify dummy interface (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces dummy {{ rv_dummy_name }}"
+      register: dummy_show
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - name: DUMMY-001 - Assert dummy present with address
+      ansible.builtin.assert:
+        that:
+          - dummy_show.stdout is defined
+          - dummy_show.stdout | length > 0
+          - "rv_dummy_name in dummy_show.stdout[0]"
+          - "rv_dummy_ip in dummy_show.stdout[0]"
+        fail_msg: "DUMMY-001: Dummy {{ rv_dummy_name }} address not found. Expected {{ rv_dummy_ip }}. Got: {{ dummy_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - import_tasks: ../_helpers/wait_route.yml
+      vars:
+        _route_prefix: "{{ hostvars[rv_peer].rv_dummy_ip }}"
+        _route_test_id: "DUMMY-001"
+      tags: [DUMMY-001, interfaces, dummy]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_dummy_ip }}"
+        _ping_test_id: "DUMMY-001"
+      tags: [DUMMY-001, interfaces, dummy]
+
+  always:
+    - name: DUMMY-001 - Cleanup dummy interface
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces dummy {{ rv_dummy_name }}"]
+      ignore_errors: true
+      tags: [DUMMY-001, interfaces, dummy, cleanup]
+
+    - name: DUMMY-001 - Cleanup OSPF
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols ospf area 0 network '10.0.2.0/24'"
+          - "delete protocols ospf redistribute connected"
+      ignore_errors: true
+      tags: [DUMMY-001, interfaces, dummy, cleanup]
+
+    - name: DUMMY-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [DUMMY-001, interfaces, dummy, cleanup]
+  when: inventory_hostname in groups['pair_1']

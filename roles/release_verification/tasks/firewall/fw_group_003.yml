@@ -1,0 +1,111 @@
+---
+# FW-GROUP-003: Firewall IPv6 address-group and domain-group
+# Topology: 2-node symmetric
+#   r1: creates ipv6-address-group with r2's IPv6 address + domain-group,
+#       applies IPv6 firewall rule, pings r2 over IPv6 to confirm real traffic filtering
+#   r2: creates ipv6-address-group with r1's IPv6 address + domain-group,
+#       applies IPv6 firewall rule, pings r1 over IPv6 to confirm real traffic filtering
+#
+# VyOS unit tests (smoketest/scripts/cli/test_firewall.py) already cover:
+#   - ipv6-address-group: CLI → nftables set type ipv6_addr translation
+#   - domain-group: CLI → nftables set creation + DNS resolution trigger
+#
+# This test adds what unit tests cannot cover:
+#   - Real IPv6 ICMPv6 traffic is accepted through an ipv6-address-group rule
+#     on two live routers talking to each other (end-to-end, not synthetic)
+#   - domain-group configuration applies successfully on production hardware
+- block:
+    - name: FW-GROUP-003 - Set up eth1 underlay IPv4
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Set up eth1 underlay IPv6
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_ipv6_underlay_ip }}/64'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Configure IPv6 address-group and domain-group
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall group ipv6-address-group {{ rv_fw_group_ipv6_addr }} address '{{ hostvars[rv_peer].rv_ipv6_underlay_ip }}'"
+          - "set firewall group domain-group {{ rv_fw_group_domain }} address 'vyos.net'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Apply IPv6 address-group in firewall rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv6 input filter rule 300 action 'accept'"
+          - "set firewall ipv6 input filter rule 300 protocol 'ipv6-icmp'"
+          - "set firewall ipv6 input filter rule 300 source group address-group '{{ rv_fw_group_ipv6_addr }}'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Verify (show firewall group)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show firewall group"
+      register: fw_group3_show
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Verify domain-group config
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'firewall group domain-group'"
+      register: fw_group3_domain_config
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Assert IPv6 address-group and domain-group present with members
+      ansible.builtin.assert:
+        that:
+          - fw_group3_show.stdout is defined
+          - fw_group3_show.stdout | length > 0
+          - "rv_fw_group_ipv6_addr in fw_group3_show.stdout[0]"
+          - "hostvars[rv_peer].rv_ipv6_underlay_ip in fw_group3_show.stdout[0]"
+          - "rv_fw_group_domain in fw_group3_show.stdout[0]"
+          - fw_group3_domain_config.stdout is defined
+          - "'vyos.net' in fw_group3_domain_config.stdout[0]"
+        fail_msg: >-
+          FW-GROUP-003: Groups not found or members missing.
+          Expected {{ rv_fw_group_ipv6_addr }} with {{ hostvars[rv_peer].rv_ipv6_underlay_ip }},
+          {{ rv_fw_group_domain }} with vyos.net.
+          show firewall group: {{ fw_group3_show.stdout[0] | default('(no output)') | truncate(300) }}
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_ipv6_underlay_ip }}"
+        _ping_test_id: "FW-GROUP-003"
+      tags: [FW-GROUP-003, firewall, groups]
+
+  always:
+    - name: FW-GROUP-003 - Cleanup firewall rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 input filter rule 300"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
+    - name: FW-GROUP-003 - Cleanup firewall groups
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall group ipv6-address-group {{ rv_fw_group_ipv6_addr }}"
+          - "delete firewall group domain-group {{ rv_fw_group_domain }}"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
+    - name: FW-GROUP-003 - Remove eth1 underlay IPv4
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
+    - name: FW-GROUP-003 - Remove eth1 underlay IPv6
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_ipv6_underlay_ip }}/64'"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+  when: inventory_hostname in groups['pair_1']

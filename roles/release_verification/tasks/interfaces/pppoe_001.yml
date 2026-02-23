@@ -1,0 +1,29 @@
+---
+# PPPOE-001: PPPoE client interface
+# Topology: 1-node
+#   r1: creates pppoe0 on eth1, verifies config accepted (no server required)
+# Uses rv_eth_test_interfaces[0] (eth1) as source-interface.
+# Without a PPPoE server, the interface won't come up — verify config was accepted.
+- block:
+    - name: PPPOE-001 - Configure PPPoE client
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces pppoe {{ rv_pppoe_name }} source-interface '{{ rv_eth_test_interfaces[0] }}'"
+          - "set interfaces pppoe {{ rv_pppoe_name }} authentication username 'testuser'"
+          - "set interfaces pppoe {{ rv_pppoe_name }} authentication password 'testpass'"
+      tags: [PPPOE-001, interfaces, pppoe]
+
+    - import_tasks: ../_helpers/show_assert.yml
+      vars:
+        _show_command: "show configuration commands | grep pppoe"
+        _assert_string: "{{ rv_pppoe_name }}"
+        _assert_test_id: "PPPOE-001"
+      tags: [PPPOE-001, interfaces, pppoe]
+
+  always:
+    - name: PPPOE-001 - Cleanup PPPoE
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces pppoe {{ rv_pppoe_name }}"]
+      ignore_errors: true
+      tags: [PPPOE-001, interfaces, pppoe, cleanup]
+  when: inventory_hostname == 'r1'

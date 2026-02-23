@@ -1,0 +1,94 @@
+---
+# WG-001: WireGuard encrypted tunnel
+# Topology: 2-node symmetric
+#   r1: generates keypair, configures wg0 with r2 as peer (exchanged pubkeys), pings r2 overlay
+#   r2: generates keypair, configures wg0 with r1 as peer (exchanged pubkeys), pings r1 overlay
+- block:
+    - name: WG-001 - Set up eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Generate WireGuard keypair on DUT
+      vyos.vyos.vyos_command:
+        commands:
+          - "generate pki wireguard key-pair"
+      register: wg_keygen
+      changed_when: false
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Assert key generation produced output
+      ansible.builtin.assert:
+        that:
+          - wg_keygen.stdout is defined
+          - wg_keygen.stdout | length > 0
+          - "'Private key:' in wg_keygen.stdout[0]"
+          - "'Public key:' in wg_keygen.stdout[0]"
+        fail_msg: "WG-001: Key generation failed. Got: {{ wg_keygen.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Store generated keys as facts
+      ansible.builtin.set_fact:
+        rv_wg_generated_privkey: "{{ wg_keygen.stdout[0] | regex_search('Private key: (.+)', '\\1') | first }}"
+        rv_wg_generated_pubkey: "{{ wg_keygen.stdout[0] | regex_search('Public key: (.+)', '\\1') | first }}"
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Configure WireGuard
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces wireguard {{ rv_wireguard_name }} private-key '{{ rv_wg_generated_privkey }}'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} address '{{ rv_wg_overlay_ip }}/24'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} port '{{ rv_wireguard_port }}'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} allowed-ips '{{ hostvars[rv_peer].rv_wg_overlay_ip }}/32'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} address '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} port '{{ rv_wireguard_port }}'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} public-key '{{ hostvars[rv_peer].rv_wg_generated_pubkey }}'"
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Verify WireGuard (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces wireguard {{ rv_wireguard_name }}"
+      register: wg_show
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Verify WireGuard detail (port and peer)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces wireguard {{ rv_wireguard_name }} summary"
+      register: wg_detail
+      tags: [WG-001, interfaces, wireguard]
+
+    - name: WG-001 - Assert WireGuard present with overlay IP and port
+      ansible.builtin.assert:
+        that:
+          - wg_show.stdout is defined
+          - wg_show.stdout | length > 0
+          - "rv_wireguard_name in wg_show.stdout[0]"
+          - "rv_wg_overlay_ip in wg_show.stdout[0]"
+          - wg_detail.stdout is defined
+          - "rv_wireguard_port in wg_detail.stdout[0]"
+        fail_msg: "WG-001: WireGuard config incorrect. Expected overlay {{ rv_wg_overlay_ip }}, port {{ rv_wireguard_port }}. show: {{ wg_show.stdout[0] | default('(no output)') | truncate(200) }} detail: {{ wg_detail.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [WG-001, interfaces, wireguard]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_wg_overlay_ip }}"
+        _ping_test_id: "WG-001"
+      tags: [WG-001, interfaces, wireguard]
+
+  always:
+    - name: WG-001 - Cleanup WireGuard
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces wireguard {{ rv_wireguard_name }}"]
+      ignore_errors: true
+      tags: [WG-001, interfaces, wireguard, cleanup]
+
+    - name: WG-001 - Remove eth1 underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [WG-001, interfaces, wireguard, cleanup]
+  when: inventory_hostname in groups['pair_1']

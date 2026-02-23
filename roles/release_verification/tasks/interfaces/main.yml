@@ -1,0 +1,69 @@
+---
+# Interfaces category - 22 test cases
+# Tags: interfaces, <subcategory>, <TEST-ID>
+
+- import_tasks: bond_001.yml
+  tags: [interfaces, bonding, BOND-001]
+
+- import_tasks: bridge_001.yml
+  tags: [interfaces, bridge, BRIDGE-001]
+
+- import_tasks: bridge_002.yml
+  tags: [interfaces, bridge, firewall, BRIDGE-002]
+
+- import_tasks: dummy_001.yml
+  tags: [interfaces, dummy, DUMMY-001]
+
+- import_tasks: eth_001.yml
+  tags: [interfaces, ethernet, ETH-001]
+
+- import_tasks: eth_002.yml
+  tags: [interfaces, ethernet, ETH-002]
+
+- import_tasks: geneve_001.yml
+  tags: [interfaces, geneve, GENEVE-001]
+
+- import_tasks: l2tpv3_001.yml
+  tags: [interfaces, l2tpv3, L2TPV3-001]
+
+- import_tasks: loop_001.yml
+  tags: [interfaces, loopback, LOOP-001]
+
+- import_tasks: macsec_001.yml
+  tags: [interfaces, macsec, MACSEC-001]
+
+- import_tasks: ovpn_001.yml
+  tags: [interfaces, openvpn, OVPN-001]
+
+- import_tasks: wg_001.yml
+  tags: [interfaces, wireguard, WG-001]
+
+- import_tasks: wg_002.yml
+  tags: [interfaces, wireguard, WG-002]
+
+- import_tasks: pppoe_001.yml
+  tags: [interfaces, pppoe, PPPOE-001]
+
+- import_tasks: peth_001.yml
+  tags: [interfaces, pseudo-ethernet, PETH-001]
+
+- import_tasks: sstp_001.yml
+  tags: [interfaces, sstp-client, SSTP-001]
+
+- import_tasks: tun_001.yml
+  tags: [interfaces, tunnel, TUN-001]
+
+- import_tasks: veth_001.yml
+  tags: [interfaces, virtual-ethernet, VETH-001]
+
+- import_tasks: vti_001.yml
+  tags: [interfaces, vti, VTI-001]
+
+- import_tasks: vxlan_001.yml
+  tags: [interfaces, vxlan, VXLAN-001]
+
+- import_tasks: wlan_001.yml
+  tags: [interfaces, wireless, WLAN-001]
+
+- import_tasks: wwan_001.yml
+  tags: [interfaces, wwan, WWAN-001]

@@ -1,0 +1,44 @@
+---
+# PETH-001: Pseudo-ethernet (macvlan) - source-interface binds to physical
+# Topology: 1-node
+#   r1: creates peth0 on eth1 with address, verifies interface present
+- block:
+    - name: PETH-001 - Configure pseudo-ethernet (source-interface)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces pseudo-ethernet peth0 source-interface '{{ rv_eth_test_interfaces[0] }}'"
+      tags: [PETH-001, interfaces, pseudo-ethernet]
+
+    - name: PETH-001 - Verify pseudo-ethernet (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces pseudo-ethernet"
+      register: peth_show
+      tags: [PETH-001, interfaces, pseudo-ethernet]
+
+    - name: PETH-001 - Verify pseudo-ethernet source-interface (config)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces pseudo-ethernet peth0'"
+      register: peth_config
+      tags: [PETH-001, interfaces, pseudo-ethernet]
+
+    - name: PETH-001 - Assert pseudo-ethernet present with source-interface binding
+      ansible.builtin.assert:
+        that:
+          - peth_show.stdout is defined
+          - peth_show.stdout | length > 0
+          - "'peth0' in peth_show.stdout[0]"
+          - peth_config.stdout is defined
+          - "'source-interface' in peth_config.stdout[0]"
+          - "rv_eth_test_interfaces[0] in peth_config.stdout[0]"
+        fail_msg: "PETH-001: Pseudo-ethernet peth0 source-interface not configured correctly. Expected source {{ rv_eth_test_interfaces[0] }}. show: {{ peth_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ peth_config.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [PETH-001, interfaces, pseudo-ethernet]
+
+  always:
+    - name: PETH-001 - Cleanup pseudo-ethernet
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces pseudo-ethernet peth0"]
+      ignore_errors: true
+      tags: [PETH-001, interfaces, pseudo-ethernet, cleanup]
+  when: inventory_hostname == 'r1'

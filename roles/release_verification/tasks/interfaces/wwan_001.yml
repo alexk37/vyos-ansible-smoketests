@@ -1,0 +1,38 @@
+---
+# WWAN-001: WWAN modem interface (hardware-dependent)
+# Topology: 1-node
+#   r1: checks for WWAN hardware, configures wwan0 if present, gracefully skips if absent
+# Verifies the CLI path exists. If no WWAN hardware, reports skip with explanation.
+- block:
+    - name: WWAN-001 - Check for WWAN hardware
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces wwan"
+      register: wwan_show
+      ignore_errors: true
+      tags: [WWAN-001, interfaces, wwan]
+
+    - name: WWAN-001 - Skip if no WWAN support
+      ansible.builtin.debug:
+        msg: >-
+          WWAN-001: SKIPPED — No WWAN hardware on this device.
+          show output: {{ wwan_show.stdout[0] | default(wwan_show.msg | default('command failed')) | truncate(200) }}
+      when: wwan_show is failed
+      tags: [WWAN-001, interfaces, wwan]
+
+    - name: WWAN-001 - Assert WWAN CLI responded
+      ansible.builtin.assert:
+        that:
+          - wwan_show.stdout is defined
+          - wwan_show.stdout | length > 0
+        fail_msg: "WWAN-001: 'show interfaces wwan' produced no output"
+      when: wwan_show is not failed
+      tags: [WWAN-001, interfaces, wwan]
+
+  always:
+    - name: WWAN-001 - Cleanup WWAN if configured
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces wwan wwan0"]
+      ignore_errors: true
+      tags: [WWAN-001, interfaces, wwan, cleanup]
+  when: inventory_hostname == 'r1'

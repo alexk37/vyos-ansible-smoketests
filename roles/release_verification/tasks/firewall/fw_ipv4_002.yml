@@ -1,0 +1,185 @@
+---
+# FW-IPV4-002: IPv4 forward filter rules — 3-node traffic enforcement
+# Topology: 3-node asymmetric
+#   r1: source — configures eth1 (10.0.2.1/24), adds static route to r3 network
+#   r2: middle router — configures eth1 (10.0.2.2/24) + eth2 (10.0.3.2/24), applies forward filter
+#   r3: destination — configures eth1 (10.0.3.3/24), adds static route to r1 network
+#
+# Traffic path: r1 (10.0.2.1) → r2 (forward chain) → r3 (10.0.3.3)
+#
+# VyOS unit tests (smoketest/scripts/cli/test_firewall.py) already cover:
+#   - CLI → nftables chain VYOS_FORWARD_filter creation and hook binding at forward priority
+#   - Rule translation (action, protocol, source/dest address) for forward filter
+#   - These are single-node synthetic tests with no actual traffic forwarding
+#
+# This test adds what unit tests cannot cover:
+#   - Real ICMP packets routed through a live 2-leg router are blocked by a forward filter rule
+#   - Rule ordering on forwarded traffic: lower-numbered accept rule (50) beats drop rule (100)
+#   - Full 3-node interop: static routing + forward filter on a two-interface router
+- block:
+    # ── Phase 1: Underlay setup ──────────────────────────────────────────────
+    - name: FW-IPV4-002 - Configure r1 eth1 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r1_eth1_ip }}/24'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Configure r2 eth1 and eth2 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r2_eth1_ip }}/24'"
+          - "set interfaces ethernet eth2 address '{{ r2_eth2_ip }}/24'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Configure r3 eth1 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet eth1 address '{{ r3_eth1_ip }}/24'"
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 2: Static routes ───────────────────────────────────────────────
+    - name: FW-IPV4-002 - Add r1 static route to r3 network via r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set protocols static route 10.0.3.0/24 next-hop '{{ r2_eth1_ip }}'"
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Add r3 static route to r1 network via r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set protocols static route 10.0.2.0/24 next-hop '{{ r2_eth2_ip }}'"
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 3: Baseline — confirm routing works before any filter ──────────
+    - name: FW-IPV4-002 - Baseline ping r1→r3 (routing only, no filter)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip }} count 3 deadline 10"
+      register: fw_ipv4_fwd_baseline
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Assert baseline routing OK
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv4_fwd_baseline.stdout[0]"
+        fail_msg: >-
+          FW-IPV4-002: Baseline routing r1→r3 failed before any filter was applied.
+          Check eth1/eth2 underlay and static routes.
+          Output: {{ fw_ipv4_fwd_baseline.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 4: Apply forward drop rule on r2 ───────────────────────────────
+    - name: FW-IPV4-002 - Add forward filter drop rule on r2
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv4 forward filter rule 100 action 'drop'"
+          - "set firewall ipv4 forward filter rule 100 protocol 'icmp'"
+          - "set firewall ipv4 forward filter rule 100 source address '{{ r1_eth1_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 5: Verify forwarded ICMP is blocked ────────────────────────────
+    - name: FW-IPV4-002 - Verify r1→r3 ICMP blocked by forward filter
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip }} count 3 deadline 5"
+      register: fw_ipv4_fwd_block
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Assert ICMP forwarding blocked
+      ansible.builtin.assert:
+        that:
+          - "'100% packet loss' in fw_ipv4_fwd_block.stdout[0]"
+        fail_msg: >-
+          FW-IPV4-002: Expected forwarded ICMP to be dropped but ping succeeded.
+          Output: {{ fw_ipv4_fwd_block.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 6: Accept rule override (lower number wins) ────────────────────
+    - name: FW-IPV4-002 - Add forward filter accept rule on r2 (rule 50 beats rule 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv4 forward filter rule 50 action 'accept'"
+          - "set firewall ipv4 forward filter rule 50 protocol 'icmp'"
+          - "set firewall ipv4 forward filter rule 50 source address '{{ r1_eth1_ip }}'"
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    # ── Phase 7: Verify accept wins over drop ────────────────────────────────
+    - name: FW-IPV4-002 - Verify r1→r3 ICMP forwarded (accept rule wins)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ r3_eth1_ip }} count 3 deadline 10"
+      register: fw_ipv4_fwd_accept
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+    - name: FW-IPV4-002 - Assert ICMP forwarding accepted
+      ansible.builtin.assert:
+        that:
+          - "', 0% packet loss' in fw_ipv4_fwd_accept.stdout[0]"
+        fail_msg: >-
+          FW-IPV4-002: Expected ICMP to be forwarded (accept rule 50 > drop rule 100) but ping failed.
+          Output: {{ fw_ipv4_fwd_accept.stdout[0] | default('(no output)') | truncate(300) }}
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4]
+
+  always:
+    - name: FW-IPV4-002 - Cleanup forward filter rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 forward filter rule 50"
+          - "delete firewall ipv4 forward filter rule 100"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Remove r1 static route
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route 10.0.3.0/24 next-hop '{{ r2_eth1_ip }}'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Remove r3 static route
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route 10.0.2.0/24 next-hop '{{ r2_eth2_ip }}'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Remove r1 eth1 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r1_eth1_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Remove r2 eth1 and eth2 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r2_eth1_ip }}/24'"
+          - "delete interfaces ethernet eth2 address '{{ r2_eth2_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Remove r3 eth1 underlay
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r3_eth1_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]

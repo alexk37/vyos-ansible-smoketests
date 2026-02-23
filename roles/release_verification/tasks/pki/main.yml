@@ -1,0 +1,10 @@
+---
+# PKI category - 5 test cases (0 implemented)
+# Tags: pki, PKI-001, PKI-002, PKI-003, PKI-004, PKI-005
+#
+# Pending:
+# - pki_001.yml (PKI-001: PKI CA/certificate)
+# - pki_002.yml (PKI-002: Generate pki)
+# - pki_003.yml (PKI-003: ACME/Let's Encrypt)
+# - pki_004.yml (PKI-004: Import pki)
+# - pki_005.yml (PKI-005: WG/OVPN key generation)

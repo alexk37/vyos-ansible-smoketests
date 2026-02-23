@@ -1,0 +1,25 @@
+---
+# Shared helper: Wait for a route to appear in the routing table (retry loop).
+#
+# Required vars:
+#   _route_prefix   - IP prefix to check for (e.g. "192.0.2.202")
+#   _route_test_id  - test case ID for messages
+#
+# Optional vars:
+#   _route_retries  - max retries (default 12)
+#   _route_delay    - seconds between retries (default 5)
+#   _route_vrf      - VRF name (adds "vrf <name>" to show command)
+#
+# NOTE: No _route_condition parameter. Guard the import_tasks with `when:` instead.
+
+- name: "{{ _route_test_id }} - Wait for route {{ _route_prefix }}"
+  vyos.vyos.vyos_command:
+    commands:
+      - "show ip route {{ _route_vrf | default('') }} {{ _route_prefix }}"
+  register: _route_result
+  until: >-
+    _route_result.stdout is defined and
+    _route_result.stdout | length > 0 and
+    _route_prefix in _route_result.stdout[0]
+  retries: "{{ _route_retries | default(12) }}"
+  delay: "{{ _route_delay | default(5) }}"

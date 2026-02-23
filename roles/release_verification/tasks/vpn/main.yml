@@ -1,0 +1,14 @@
+---
+# VPN category - 9 test cases (0 implemented)
+# Tags: vpn, VPN-IPSEC-001, VPN-IPSEC-002, VPN-IPSEC-003, VPN-L2TP-001, VPN-OC-001, VPN-PPTP-001, VPN-RSA-001, VPN-SSTP-001, VPN-DMVPN-001
+#
+# Pending:
+# - vpn_ipsec_001.yml (VPN-IPSEC-001: IPsec site-to-site IKEv2)
+# - vpn_ipsec_002.yml (VPN-IPSEC-002: IPsec remote access)
+# - vpn_ipsec_003.yml (VPN-IPSEC-003: IPsec profile and proposal)
+# - vpn_l2tp_001.yml (VPN-L2TP-001: L2TP server/client)
+# - vpn_oc_001.yml (VPN-OC-001: OpenConnect server)
+# - vpn_pptp_001.yml (VPN-PPTP-001: PPTP server)
+# - vpn_rsa_001.yml (VPN-RSA-001: RSA keys)
+# - vpn_sstp_001.yml (VPN-SSTP-001: SSTP server)
+# - vpn_dmvpn_001.yml (VPN-DMVPN-001: DMVPN)

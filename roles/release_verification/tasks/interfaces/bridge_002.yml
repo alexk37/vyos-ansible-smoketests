@@ -1,0 +1,50 @@
+---
+# BRIDGE-002: Bridge firewall (forward/input) rules apply
+# Topology: 1-node
+#   r1: creates br0, adds bridge firewall forward filter rule, verifies in show output
+# In current VyOS, bridge firewall is global under "set firewall bridge",
+# not per-interface. We create a bridge, then add bridge firewall rules
+# and verify they appear in "show firewall bridge".
+- block:
+    - name: BRIDGE-002 - Configure bridge
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces bridge {{ rv_bridge_name }} address '{{ rv_ipv4_prefix }}.2/24'"
+          - "set interfaces bridge {{ rv_bridge_name }} member interface '{{ rv_eth_test_interfaces[1] }}'"
+      tags: [BRIDGE-002, interfaces, bridge, firewall]
+
+    - name: BRIDGE-002 - Configure bridge firewall forward filter
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall bridge forward filter default-action 'accept'"
+          - "set firewall bridge forward filter rule 1 action 'accept'"
+          - "set firewall bridge forward filter rule 1 protocol 'icmp'"
+      tags: [BRIDGE-002, interfaces, bridge, firewall]
+
+    - name: BRIDGE-002 - Verify bridge firewall (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show firewall bridge"
+      register: fw_show
+      tags: [BRIDGE-002, interfaces, bridge, firewall]
+
+    - name: BRIDGE-002 - Assert bridge firewall rules present
+      ansible.builtin.assert:
+        that:
+          - fw_show.stdout is defined
+          - fw_show.stdout | length > 0
+          - "'forward' in fw_show.stdout[0]"
+          - "'icmp' in fw_show.stdout[0]"
+          - "'accept' in fw_show.stdout[0]"
+        fail_msg: "BRIDGE-002: Bridge firewall rules not found. Expected forward filter with rule 1 icmp accept. Got: {{ fw_show.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [BRIDGE-002, interfaces, bridge, firewall]
+
+  always:
+    - name: BRIDGE-002 - Cleanup bridge firewall and bridge
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge forward filter"
+          - "delete interfaces bridge {{ rv_bridge_name }}"
+      ignore_errors: true
+      tags: [BRIDGE-002, interfaces, bridge, firewall, cleanup]
+  when: inventory_hostname == 'r1'

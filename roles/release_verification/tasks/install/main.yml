@@ -1,0 +1,12 @@
+---
+# Install category - 7 test cases (0 implemented)
+# Tags: install, INST-001, INST-002, INST-003, INST-004, INST-005, INST-006, INST-007
+#
+# Pending:
+# - inst_001.yml (INST-001: Fresh install)
+# - inst_002.yml (INST-002: Image management)
+# - inst_003.yml (INST-003: System update)
+# - inst_004.yml (INST-004: Bare-metal)
+# - inst_005.yml (INST-005: Secure Boot)
+# - inst_006.yml (INST-006: Virtual install)
+# - inst_007.yml (INST-007: Cloud deploy)

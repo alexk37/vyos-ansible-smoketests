@@ -1,3 +1,25 @@
 [vyos_hosts]
-r1 ansible_ssh_host=192.0.2.21
-r2 ansible_ssh_host=192.0.2.22
+r1 ansible_ssh_host=192.168.1.40
+#r1 ansible_ssh_host=172.20.10.2
+r2 ansible_ssh_host=192.168.1.42
+#r2 ansible_ssh_host=172.20.10.3
+r3 ansible_ssh_host=192.168.1.43
+#r3 ansible_ssh_host=172.20.10.4
+
+# Two-node tests (pair): each host uses rv_peer and rv_underlay_ip / rv_tunnel_overlay_ip
+[pair_1]
+r1
+r2
+
+# Three-node tests: r1 (source) → r2 (middle router) → r3 (destination)
+[trio_1]
+r1
+r2
+r3
+
+# Add when you have 4 routers for 4-node tests (e.g. VRRP, BGP RR + 3 clients):
+# [quad]
+# r1
+# r2
+# r3
+# r4

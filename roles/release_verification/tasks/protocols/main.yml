@@ -1,0 +1,27 @@
+---
+# Protocols category - 22 test cases (0 implemented)
+# Tags: protocols, ARP-001, BABEL-001, BFD-001, BGP-001, BGP-002, BGP-003, BGP-004, FAILOVER-001, IGMP-001, ISIS-001, MPLS-001, MCAST-001, OPENFABRIC-001, OSPF-001, OSPF-002, PIM-001, PIM6-001, RIP-001, RPKI-001, SR-001, STATIC-001, STATIC-002
+#
+# Pending:
+# - arp_001.yml (ARP-001: ARP configuration)
+# - babel_001.yml (BABEL-001: Babel routing)
+# - bfd_001.yml (BFD-001: BFD session and multihop)
+# - bgp_001.yml (BGP-001: BGP neighbor and address-family)
+# - bgp_002.yml (BGP-002: BGP route reflector and peer groups)
+# - bgp_003.yml (BGP-003: BGP L2VPN EVPN)
+# - bgp_004.yml (BGP-004: BGP redistribution and route-maps)
+# - failover_001.yml (FAILOVER-001: Failover protocol)
+# - igmp_001.yml (IGMP-001: IGMP proxy)
+# - isis_001.yml (ISIS-001: IS-IS routing)
+# - mpls_001.yml (MPLS-001: MPLS LDP and static labels)
+# - mcast_001.yml (MCAST-001: Multicast routing PIM)
+# - openfabric_001.yml (OPENFABRIC-001: Open Fabric)
+# - ospf_001.yml (OSPF-001: OSPF area and interface)
+# - ospf_002.yml (OSPF-002: OSPF redistribution and route filtering)
+# - pim_001.yml (PIM-001: PIM IPv4)
+# - pim6_001.yml (PIM6-001: PIM6 IPv6)
+# - rip_001.yml (RIP-001: RIP and RIPng)
+# - rpki_001.yml (RPKI-001: RPKI validation)
+# - sr_001.yml (SR-001: Segment routing)
+# - static_001.yml (STATIC-001: Static IPv4 route)
+# - static_002.yml (STATIC-002: Static IPv6 route)

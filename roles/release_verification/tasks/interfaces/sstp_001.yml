@@ -1,0 +1,39 @@
+---
+# SSTP-001: SSTP client interface
+# Topology: 1-node
+#   r1: creates PKI CA cert, configures sstpc0, verifies config accepted (no server required)
+# Path: "set interfaces sstpc <name>"
+# Requires a PKI CA certificate. Without a real SSTP server, connection won't
+# establish — we verify the config was accepted and interface is visible.
+- block:
+    - name: SSTP-001 - Create PKI CA for SSTP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set pki ca sstp_test certificate 'MIICFDCCAbugAwIBAgIUfMbIsB/ozMXijYgUYG80T1ry+mcwCgYIKoZIzj0EAwIwWTELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxEjAQBgNVBAcMCVNvbWUtQ2l0eTENMAsGA1UECgwEVnlPUzESMBAGA1UEAwwJVnlPUyBUZXN0MB4XDTIxMDcyMDEyNDUxMloXDTI2MDcxOTEyNDUxMlowWTELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxEjAQBgNVBAcMCVNvbWUtQ2l0eTENMAsGA1UECgwEVnlPUzESMBAGA1UEAwwJVnlPUyBUZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE01HrLcNttqq4/PtoMua8rMWEkOdBu7vP94xzDO7A8C92ls1v86eePy4QllKCzIw3QxBIoCuH2peGRfWgPRdFsKNhMF8wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMB0GA1UdDgQWBBSu+JnU5ZC4mkuEpqg2+Mk4K79oeDAKBggqhkjOPQQDAgNHADBEAiBEFdzQ/Bc3LftzngrY605UhA6UprHhAogKgROv7iR4QgIgEFUxTtW3xXJcnUPWhhUFhyZoqfn8dE93+dm/LDnp7C0='"
+      tags: [SSTP-001, interfaces, sstpc]
+
+    - name: SSTP-001 - Configure SSTP client
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces sstpc sstpc0 server 'sstp.example.com'"
+          - "set interfaces sstpc sstpc0 authentication username 'testuser'"
+          - "set interfaces sstpc sstpc0 authentication password 'testpass'"
+          - "set interfaces sstpc sstpc0 ssl ca-certificate 'sstp_test'"
+      tags: [SSTP-001, interfaces, sstpc]
+
+    - import_tasks: ../_helpers/show_assert.yml
+      vars:
+        _show_command: "show configuration commands | grep sstpc"
+        _assert_string: "sstpc0"
+        _assert_test_id: "SSTP-001"
+      tags: [SSTP-001, interfaces, sstpc]
+
+  always:
+    - name: SSTP-001 - Cleanup SSTP client and PKI
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces sstpc sstpc0"
+          - "delete pki ca sstp_test"
+      ignore_errors: true
+      tags: [SSTP-001, interfaces, sstpc, cleanup]
+  when: inventory_hostname == 'r1'

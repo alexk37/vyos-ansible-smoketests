@@ -1,0 +1,49 @@
+---
+# BOND-001: Configure interface bonding and verify member interfaces
+# Topology: 1-node
+#   r1: creates bond0 with eth1+eth2 as members, verifies bond state
+# Self-contained: uses eth1+eth2 as bond members (no pre-existing addresses assumed).
+# Cleanup removes the bond, releasing the member interfaces for other tests.
+- block:
+    - name: BOND-001 - Configure bonding with members
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces bonding {{ rv_bond_name }} mode '802.3ad'"
+          - "set interfaces bonding {{ rv_bond_name }} hash-policy 'layer2+3'"
+          - "set interfaces bonding {{ rv_bond_name }} address '{{ rv_ipv4_prefix }}.1/24'"
+          - "set interfaces bonding {{ rv_bond_name }} member interface '{{ rv_eth_test_interfaces[0] }}'"
+          - "set interfaces bonding {{ rv_bond_name }} member interface '{{ rv_eth_test_interfaces[1] }}'"
+      tags: [BOND-001, interfaces, bonding]
+
+    - import_tasks: ../_helpers/show_assert.yml
+      vars:
+        _show_command: "show interfaces bonding {{ rv_bond_name }}"
+        _assert_string: "{{ rv_bond_name }}"
+        _assert_test_id: "BOND-001"
+      tags: [BOND-001, interfaces, bonding]
+
+    - name: BOND-001 - Verify both member interfaces in bond detail
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces bonding {{ rv_bond_name }} detail"
+      register: bond_detail
+      tags: [BOND-001, interfaces, bonding]
+
+    - name: BOND-001 - Assert both members present
+      ansible.builtin.assert:
+        that:
+          - bond_detail.stdout is defined
+          - bond_detail.stdout | length > 0
+          - "rv_eth_test_interfaces[0] in bond_detail.stdout[0]"
+          - "rv_eth_test_interfaces[1] in bond_detail.stdout[0]"
+        fail_msg: "BOND-001: Bond members not found. Expected {{ rv_eth_test_interfaces[0] }} and {{ rv_eth_test_interfaces[1] }}. Got: {{ bond_detail.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [BOND-001, interfaces, bonding]
+
+  always:
+    - name: BOND-001 - Cleanup bonding
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces bonding {{ rv_bond_name }}"
+      ignore_errors: true
+      tags: [BOND-001, interfaces, bonding, cleanup]
+  when: inventory_hostname == 'r1'

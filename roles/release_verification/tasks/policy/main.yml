@@ -1,0 +1,13 @@
+---
+# Policy category - 8 test cases (0 implemented)
+# Tags: policy, POL-ACL-001, POL-AS-001, POL-COMM-001, POL-EXT-001, POL-PFX-001, POL-ROUTE-001, POL-RM-001, POL-LOCAL-001
+#
+# Pending:
+# - pol_acl_001.yml (POL-ACL-001: Access-list)
+# - pol_as_001.yml (POL-AS-001: AS path list)
+# - pol_comm_001.yml (POL-COMM-001: Community list)
+# - pol_ext_001.yml (POL-EXT-001: Extended community list)
+# - pol_pfx_001.yml (POL-PFX-001: Prefix list)
+# - pol_route_001.yml (POL-ROUTE-001: Policy route)
+# - pol_rm_001.yml (POL-RM-001: Route-map)
+# - pol_local_001.yml (POL-LOCAL-001: Local route policy)

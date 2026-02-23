@@ -1,0 +1,101 @@
+---
+# OVPN-001: OpenVPN site-to-site with TLS (self-signed certificate)
+# Topology: 1-node
+#   r1: generates self-signed cert on controller, installs into VyOS PKI,
+#       configures vtun0 in passive TLS mode, verifies interface appears
+- block:
+    - name: OVPN-001 - Generate cert and key, extract VyOS PKI base64 (controller)
+      ansible.builtin.shell: |
+        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+          -days 3650 -nodes -subj "/CN=ovpn-test" \
+          -out /tmp/ovpn_{{ inventory_hostname }}.crt \
+          -keyout /tmp/ovpn_{{ inventory_hostname }}.key 2>/dev/null
+        echo "$(grep -v '^-----' /tmp/ovpn_{{ inventory_hostname }}.crt | tr -d '\n')"
+        echo "$(grep -v '^-----' /tmp/ovpn_{{ inventory_hostname }}.key | tr -d '\n')"
+      delegate_to: localhost
+      changed_when: false
+      register: ovpn_gen
+      no_log: true
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Store cert and key facts
+      ansible.builtin.set_fact:
+        _ovpn_cert: "{{ ovpn_gen.stdout_lines[0] }}"
+        _ovpn_key: "{{ ovpn_gen.stdout_lines[1] }}"
+      no_log: true
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Install cert into VyOS PKI
+      vyos.vyos.vyos_config:
+        lines:
+          - "set pki certificate ovpn_test certificate '{{ _ovpn_cert }}'"
+          - "set pki certificate ovpn_test private key '{{ _ovpn_key }}'"
+      no_log: true
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Get certificate fingerprint
+      vyos.vyos.vyos_command:
+        commands:
+          - "show pki certificate ovpn_test fingerprint sha256"
+      register: ovpn_fp
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Configure OpenVPN site-to-site TLS
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces openvpn {{ rv_openvpn_name }} mode 'site-to-site'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} persistent-tunnel"
+          - "set interfaces openvpn {{ rv_openvpn_name }} protocol 'udp'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} local-port '1195'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} local-address '{{ rv_ipv4_prefix }}.60'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} remote-address '{{ rv_ipv4_prefix }}.61'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} tls certificate 'ovpn_test'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} tls peer-fingerprint '{{ ovpn_fp.stdout[0] | trim }}'"
+          - "set interfaces openvpn {{ rv_openvpn_name }} tls role 'passive'"
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - import_tasks: ../_helpers/show_assert.yml
+      vars:
+        _show_command: "show interfaces openvpn {{ rv_openvpn_name }}"
+        _assert_string: "{{ rv_openvpn_name }}"
+        _assert_test_id: "OVPN-001"
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Verify OpenVPN config (mode, protocol, TLS)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show configuration commands | grep 'interfaces openvpn {{ rv_openvpn_name }}'"
+      register: ovpn_config
+      tags: [OVPN-001, interfaces, openvpn]
+
+    - name: OVPN-001 - Assert OpenVPN mode, protocol and TLS certificate configured
+      ansible.builtin.assert:
+        that:
+          - ovpn_config.stdout is defined
+          - "'site-to-site' in ovpn_config.stdout[0]"
+          - "'udp' in ovpn_config.stdout[0]"
+          - "'tls' in ovpn_config.stdout[0]"
+          - "'ovpn_test' in ovpn_config.stdout[0]"
+        fail_msg: "OVPN-001: OpenVPN config properties not found. Expected site-to-site, udp, tls with ovpn_test cert. Got: {{ ovpn_config.stdout[0] | default('(no output)') | truncate(300) }}"
+      tags: [OVPN-001, interfaces, openvpn]
+
+  always:
+    - name: OVPN-001 - Cleanup OpenVPN interface and PKI cert
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces openvpn {{ rv_openvpn_name }}"
+          - "delete pki certificate ovpn_test"
+      ignore_errors: true
+      tags: [OVPN-001, interfaces, openvpn, cleanup]
+
+    - name: OVPN-001 - Remove temp cert files (controller)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      delegate_to: localhost
+      loop:
+        - "/tmp/ovpn_{{ inventory_hostname }}.crt"
+        - "/tmp/ovpn_{{ inventory_hostname }}.key"
+      ignore_errors: true
+      tags: [OVPN-001, interfaces, openvpn, cleanup]
+  when: inventory_hostname == 'r1'

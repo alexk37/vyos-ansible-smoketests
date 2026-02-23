@@ -1,0 +1,42 @@
+---
+# ETH-002: VLAN sub-interface on ethernet
+# Topology: 2-node symmetric
+#   r1: creates vlan100 on eth1 with rv_vlan_test_ip, pings r2
+#   r2: creates vlan100 on eth1 with rv_vlan_test_ip, pings r1
+- block:
+    - name: ETH-002 - Configure VLAN 100
+      vyos.vyos.vyos_config:
+        lines:
+          - "set interfaces ethernet {{ rv_eth_test_interfaces[0] }} vif 100 address '{{ rv_vlan_test_ip }}/24'"
+      tags: [ETH-002, interfaces, ethernet]
+
+    - name: ETH-002 - Verify VLAN (show)
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces ethernet {{ rv_eth_test_interfaces[0] }} vif 100"
+      register: vif_show
+      tags: [ETH-002, interfaces, ethernet]
+
+    - name: ETH-002 - Assert VLAN present with subinterface name and address
+      ansible.builtin.assert:
+        that:
+          - vif_show.stdout is defined
+          - vif_show.stdout | length > 0
+          - "(rv_eth_test_interfaces[0] ~ '.100') in vif_show.stdout[0]"
+          - "rv_vlan_test_ip in vif_show.stdout[0]"
+        fail_msg: "ETH-002: VLAN 100 not found or misconfigured. Expected subinterface {{ rv_eth_test_interfaces[0] }}.100 with IP {{ rv_vlan_test_ip }}. Got: {{ vif_show.stdout[0] | default('(no output)') | truncate(200) }}"
+      tags: [ETH-002, interfaces, ethernet]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_vlan_test_ip }}"
+        _ping_test_id: "ETH-002"
+      tags: [ETH-002, interfaces, ethernet]
+
+  always:
+    - name: ETH-002 - Cleanup VLAN
+      vyos.vyos.vyos_config:
+        lines: ["delete interfaces ethernet {{ rv_eth_test_interfaces[0] }} vif 100"]
+      ignore_errors: true
+      tags: [ETH-002, interfaces, ethernet, cleanup]
+  when: inventory_hostname in groups['pair_1']
