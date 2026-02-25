@@ -1,0 +1,16 @@
+---
+
+- name: Add VRRP simple config
+  vyos.vyos.vyos_vrrp:
+    config:
+      disable: false
+      vrrp:
+        groups:
+          - name: vrrp1
+            address: 192.0.2.111
+            excluded_address: 2001:db8:1111::1/64
+            interface: eth1
+            no_preempt: true
+            rfc3768_compatibility: true
+            vrid: 111
+        snmp: enabled
