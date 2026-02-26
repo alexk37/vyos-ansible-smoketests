@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [L2TPV3-001, interfaces, l2tpv3]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "L2TPV3-001"
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
     - name: L2TPV3-001 - Configure L2TPv3
       vyos.vyos.vyos_config:
         lines:
@@ -54,6 +59,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_l2tpv3_overlay_ip }}"
         _ping_test_id: "L2TPV3-001"
       tags: [L2TPV3-001, interfaces, l2tpv3]
+
+  rescue:
+    - name: L2TPV3-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: L2TPV3-001 - Cleanup L2TPv3

@@ -79,6 +79,8 @@
     - name: FW-IPV6-001 - Assert baseline IPv6 routing r1→r3 OK
       ansible.builtin.assert:
         that:
+          - fw_ipv6_fwd_baseline.stdout is defined
+          - fw_ipv6_fwd_baseline.stdout | length > 0
           - "', 0% packet loss' in fw_ipv6_fwd_baseline.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Baseline IPv6 routing r1→r3 failed before any filter was applied.
@@ -110,6 +112,8 @@
     - name: FW-IPV6-001 - Assert input filter drops r1→r2 ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_in_block.stdout is defined
+          - fw_ipv6_in_block.stdout | length > 0
           - "'100% packet loss' in fw_ipv6_in_block.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected input filter to block r1→r2 ICMPv6 but ping succeeded.
@@ -137,6 +141,8 @@
     - name: FW-IPV6-001 - Assert input filter accept rule allows r1→r2 ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_in_accept.stdout is defined
+          - fw_ipv6_in_accept.stdout | length > 0
           - "', 0% packet loss' in fw_ipv6_in_accept.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected accept rule 50 to override drop rule 100 but ping failed.
@@ -176,6 +182,8 @@
     - name: FW-IPV6-001 - Assert output filter blocks r1-originated ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_out_block.stdout is defined
+          - fw_ipv6_out_block.stdout | length > 0
           - "'100% packet loss' in fw_ipv6_out_block.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected output filter to block r1-originated ICMPv6 to r2 but ping succeeded.
@@ -203,6 +211,8 @@
     - name: FW-IPV6-001 - Assert output filter accept rule allows r1-originated ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_out_accept.stdout is defined
+          - fw_ipv6_out_accept.stdout | length > 0
           - "', 0% packet loss' in fw_ipv6_out_accept.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected accept rule 50 to override drop rule 100 in output filter but ping failed.
@@ -241,6 +251,8 @@
     - name: FW-IPV6-001 - Assert forward filter blocks r1→r3 ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_fwd_block.stdout is defined
+          - fw_ipv6_fwd_block.stdout | length > 0
           - "'100% packet loss' in fw_ipv6_fwd_block.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected forward filter to block r1→r3 ICMPv6 but ping succeeded.
@@ -268,12 +280,19 @@
     - name: FW-IPV6-001 - Assert forward filter accept rule allows r1→r3 ICMPv6
       ansible.builtin.assert:
         that:
+          - fw_ipv6_fwd_accept.stdout is defined
+          - fw_ipv6_fwd_accept.stdout | length > 0
           - "', 0% packet loss' in fw_ipv6_fwd_accept.stdout[0]"
         fail_msg: >-
           FW-IPV6-001: Expected accept rule 50 to override drop rule 100 in forward filter but ping failed.
           Output: {{ fw_ipv6_fwd_accept.stdout[0] | default('(no output)') | truncate(300) }}
       when: inventory_hostname == 'r1'
       tags: [FW-IPV6-001, firewall, ipv6]
+
+  rescue:
+    - name: FW-IPV6-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-IPV6-001 - Cleanup input filter rules

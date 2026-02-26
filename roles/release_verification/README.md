@@ -1,6 +1,6 @@
 # Release verification role
 
-Ansible role implementing the VyOS release verification test suite. Covers 207 test cases across 19 categories; 25 implemented so far.
+Ansible role implementing the VyOS release verification test suite. Covers 209 test cases across 19 categories; 31 implemented so far.
 
 ## Directory structure
 
@@ -9,9 +9,10 @@ roles/release_verification/
   tasks/
     main.yml                  # imports category mains
     _helpers/                 # shared reusable task patterns
-      ping_peer.yml           # ping + assert 0% packet loss
-      show_assert.yml         # show command + assert string
-      wait_route.yml          # retry loop for route convergence
+      ping_peer.yml               # ping + assert 0% packet loss
+      show_assert.yml             # show command + assert string
+      wait_route.yml              # retry loop for route convergence
+      wait_for_eth1_underlay.yml  # poll eth1 until rv_underlay_ip is active
     interfaces/               # 22 tests implemented
       main.yml
       bond_001.yml ... wwan_001.yml
@@ -153,9 +154,9 @@ Every task has tags: `[TEST-ID, category, subcategory]`. Cleanup tasks add `clea
 
 ```
 [vyos_hosts]
-r1 ansible_ssh_host=192.168.1.40
-r2 ansible_ssh_host=192.168.1.41
-r3 ansible_ssh_host=192.168.1.42
+r1 ansible_host=192.168.124.40
+r2 ansible_host=192.168.124.41
+r3 ansible_host=192.168.124.42
 
 [pair_1]
 r1
@@ -173,7 +174,7 @@ Run pair tests with `-l pair_1`, trio tests with `-l trio_1`. r3 is not defined 
 
 | Variable | r1 | r2 | r3 | Purpose |
 |----------|-----|-----|-----|---------|
-| eth0_ip | 192.168.1.40 | 192.168.1.41 | 192.168.1.42 | Management / SSH access |
+| eth0_ip | 192.168.124.40 | 192.168.124.41 | 192.168.124.42 | Management / SSH (ProxyJump via tests host) |
 | eth1_ip | 10.0.2.1 | 10.0.2.2 | 10.0.3.3 | Test traffic (r1↔r2 on eth1, r3 on r2's eth2 side) |
 | eth2_ip | — | 10.0.3.2 | — | r2's second leg towards r3 (trio tests) |
 | dum0_ip | 203.0.113.11 | 203.0.113.14 | 203.0.113.17 | Dummy interface IPs |

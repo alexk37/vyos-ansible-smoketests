@@ -18,6 +18,11 @@
         _assert_test_id: "VTI-001"
       tags: [VTI-001, interfaces, vti]
 
+  rescue:
+    - name: VTI-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: VTI-001 - Cleanup VTI
       vyos.vyos.vyos_config:

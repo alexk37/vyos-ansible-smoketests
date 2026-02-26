@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [LOOP-001, interfaces, loopback]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "LOOP-001"
+      tags: [LOOP-001, interfaces, loopback]
+
     - name: LOOP-001 - Configure loopback with OSPF redistribution
       vyos.vyos.vyos_config:
         lines:
@@ -46,6 +51,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_loop_test_ip }}"
         _ping_test_id: "LOOP-001"
       tags: [LOOP-001, interfaces, loopback]
+
+  rescue:
+    - name: LOOP-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: LOOP-001 - Cleanup loopback and OSPF

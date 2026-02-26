@@ -7,11 +7,15 @@
 #
 # Optional vars:
 #   _ping_count     - number of pings (default 3)
-#   _ping_deadline  - max seconds for entire ping run (default 5)
+#   _ping_deadline  - max seconds for entire ping run (default 10)
 #
 # NOTE: No _ping_condition parameter. If you import this helper, the ping
 # MUST run. Guard the import_tasks itself with `when:` if needed — that way
 # the skip is visible in Ansible output rather than hidden inside the helper.
+#
+# NOTE: Callers must ensure the peer interface is up before invoking this
+# helper (e.g. using vyos_command wait_for after configuring the interface).
+# This helper does not retry — 0% packet loss is the expected steady-state.
 
 - name: "{{ _ping_test_id }} - Ping {{ _ping_target }}"
   vyos.vyos.vyos_command:

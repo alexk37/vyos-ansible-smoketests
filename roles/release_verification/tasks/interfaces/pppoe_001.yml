@@ -20,6 +20,11 @@
         _assert_test_id: "PPPOE-001"
       tags: [PPPOE-001, interfaces, pppoe]
 
+  rescue:
+    - name: PPPOE-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: PPPOE-001 - Cleanup PPPoE
       vyos.vyos.vyos_config:

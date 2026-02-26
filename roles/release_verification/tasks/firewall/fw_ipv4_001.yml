@@ -21,6 +21,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [FW-IPV4-001, firewall, ipv4]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "FW-IPV4-001"
+      tags: [FW-IPV4-001, firewall, ipv4]
+
     - name: FW-IPV4-001 - Add drop rule for ICMP from peer
       vyos.vyos.vyos_config:
         lines:
@@ -39,6 +44,8 @@
     - name: FW-IPV4-001 - Assert ICMP is blocked
       ansible.builtin.assert:
         that:
+          - fw_ipv4_block_result.stdout is defined
+          - fw_ipv4_block_result.stdout | length > 0
           - "'100% packet loss' in fw_ipv4_block_result.stdout[0]"
         fail_msg: >-
           FW-IPV4-001: Expected ICMP to be dropped but ping succeeded.
@@ -63,6 +70,8 @@
     - name: FW-IPV4-001 - Assert both rules present
       ansible.builtin.assert:
         that:
+          - fw_ipv4_rules.stdout is defined
+          - fw_ipv4_rules.stdout | length > 0
           - "'rule 50' in fw_ipv4_rules.stdout[0]"
           - "'rule 100' in fw_ipv4_rules.stdout[0]"
           - "'accept' in fw_ipv4_rules.stdout[0]"
@@ -77,6 +86,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
         _ping_test_id: "FW-IPV4-001"
       tags: [FW-IPV4-001, firewall, ipv4]
+
+  rescue:
+    - name: FW-IPV4-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-IPV4-001 - Cleanup firewall rules

@@ -44,6 +44,7 @@ class CallbackModule(CallbackBase):
         super().__init__()
         self._test_order   = []
         self._test_start   = {}
+        self._test_end     = {}
         self._test_elapsed = {}
         self._test_status  = {}
         self._current_test = None
@@ -55,6 +56,13 @@ class CallbackModule(CallbackBase):
         for tag in (task.tags or []):
             if _TEST_ID_RE.match(tag):
                 return tag
+        # Fallback: parse from task name prefix (e.g. "TUN-001 - Wait for eth1...")
+        # Needed when import_tasks tag propagation doesn't reach nested helpers.
+        name = self._name(task)
+        if ' - ' in name:
+            prefix = name.split(' - ')[0]
+            if _TEST_ID_RE.match(prefix):
+                return prefix
         return None
 
     def _name(self, task):
@@ -72,14 +80,18 @@ class CallbackModule(CallbackBase):
 
     def _finalise_test(self, test_id):
         if test_id and test_id not in self._test_elapsed:
-            self._test_elapsed[test_id] = time.monotonic() - self._test_start[test_id]
+            end = self._test_end.get(test_id, time.monotonic())
+            self._test_elapsed[test_id] = end - self._test_start[test_id]
 
     def _print_test_footer(self, test_id):
         elapsed = self._test_elapsed.get(test_id, 0.0)
         status  = self._test_status.get(test_id, 'PASS')
-        color   = C.COLOR_ERROR if status == 'FAIL' else C.COLOR_OK
-        mid     = f'  {test_id}  {_fmt_time(elapsed)}  {status}  '
-        dashes  = '─' * max(4, _SEP_WIDTH - len(mid))
+        if status == 'FAIL':
+            color = C.COLOR_ERROR
+        else:
+            color = C.COLOR_OK
+        mid    = f'  {test_id}  {_fmt_time(elapsed)}  {status}  '
+        dashes = '─' * max(4, _SEP_WIDTH - len(mid))
         self._display.display('')
         self._display.display(dashes + mid + '─' * 4, color=color)
         self._display.display('')
@@ -110,6 +122,10 @@ class CallbackModule(CallbackBase):
         task   = result._task
         action = task.action
         res    = result._result
+
+        test_id = self._get_test_id(task)
+        if test_id:
+            self._test_end[test_id] = time.monotonic()
 
         if action in _SET_FACT:
             return
@@ -178,9 +194,10 @@ class CallbackModule(CallbackBase):
         action = task.action
         res    = result._result
 
-        if not ignore_errors:
-            test_id = self._get_test_id(task)
-            if test_id:
+        test_id = self._get_test_id(task)
+        if test_id:
+            self._test_end[test_id] = time.monotonic()
+            if not ignore_errors:
                 self._test_status[test_id] = 'FAIL'
 
         if action in _ASSERT:
@@ -212,10 +229,16 @@ class CallbackModule(CallbackBase):
     # ── runner: UNREACHABLE ───────────────────────────────────────────────────
 
     def v2_runner_on_unreachable(self, result):
-        host = result._host.get_name()
-        msg  = result._result.get('msg', 'host unreachable')
-        self._display.display(self._header(result._task, host, 'UNREACHABLE'), color=C.COLOR_UNREACHABLE)
+        host    = result._host.get_name()
+        task    = result._task
+        msg     = result._result.get('msg', 'host unreachable')
+        self._display.display(self._header(task, host, 'UNREACHABLE'), color=C.COLOR_UNREACHABLE)
         self._display.display(f'  {msg}', color=C.COLOR_UNREACHABLE)
+
+        test_id = self._get_test_id(task)
+        if test_id and not self._is_cleanup(task):
+            self._test_end[test_id] = time.monotonic()
+            self._test_status[test_id] = 'FAIL'
 
     # ── runner: RETRY ─────────────────────────────────────────────────────────
 
@@ -251,15 +274,18 @@ class CallbackModule(CallbackBase):
 
         n      = len(self._test_order)
         passed = sum(1 for s in self._test_status.values() if s == 'PASS')
-        failed = n - passed
+        failed = sum(1 for s in self._test_status.values() if s == 'FAIL')
         total  = _fmt_time(time.monotonic() - self._play_start) if self._play_start else '?'
         color  = C.COLOR_ERROR if failed else C.COLOR_OK
 
         if n:
-            self._display.display(
-                f'  {n} {"test" if n == 1 else "tests"}   {passed} passed   {failed} failed   total {total}',
-                color=color,
-            )
+            for test_id in self._test_order:
+                status = self._test_status.get(test_id, 'PASS')
+                tc = C.COLOR_ERROR if status == 'FAIL' else C.COLOR_OK
+                self._display.display(f'  {test_id:<20} {status}', color=tc)
+            self._display.display('')
+            summary = f'  {n} {"test" if n == 1 else "tests"}   {passed} passed   {failed} failed   total {total}'
+            self._display.display(summary, color=color)
             self._display.display('')
 
         for h in sorted(stats.processed.keys()):

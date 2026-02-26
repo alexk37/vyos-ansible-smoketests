@@ -2,11 +2,13 @@
 # Common connection options
 #ansible_python_interpreter : /usr/bin/python3
 ansible_user               : vyos
-# ansible_ssh_private_key    : ~/.ssh/id_rsa
+ansible_ssh_private_key_file : ~/.ssh/id_ed25519
 ansible_ssh_pass           : vyos
-ansible_network_os         : vyos.vyos.vyos
-ansible_connection         : ansible.netcommon.network_cli
-ansible_command_timeout    : 30
+ansible_network_os              : vyos.vyos.vyos
+ansible_connection              : ansible.netcommon.network_cli
+ansible_network_cli_ssh_type   : paramiko
+ansible_paramiko_proxy_command : "ssh -W %h:%p tests"
+ansible_command_timeout         : 30
 ansible_connect_timeout    : 10
 # gather_facts               : false
 

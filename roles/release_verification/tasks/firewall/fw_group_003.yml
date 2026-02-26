@@ -1,10 +1,12 @@
 ---
 # FW-GROUP-003: Firewall IPv6 address-group and domain-group
 # Topology: 2-node symmetric
-#   r1: creates ipv6-address-group with r2's IPv6 address + domain-group,
-#       applies IPv6 firewall rule, pings r2 over IPv6 to confirm real traffic filtering
-#   r2: creates ipv6-address-group with r1's IPv6 address + domain-group,
-#       applies IPv6 firewall rule, pings r1 over IPv6 to confirm real traffic filtering
+#   r1: creates ipv6-address-group + domain-group (peer.rv.test → peer IP via static-host-mapping),
+#       applies IPv6 firewall with default-action drop,
+#       pings r2 IPv6 — passes because the address-group rule explicitly accepts it
+#       then tests domain-group: IPv4 ICMP blocked by domain-group rule (rule 100),
+#       then accepted when rule 50 overrides
+#   r2: same
 #
 # VyOS unit tests (smoketest/scripts/cli/test_firewall.py) already cover:
 #   - ipv6-address-group: CLI → nftables set type ipv6_addr translation
@@ -13,8 +15,26 @@
 # This test adds what unit tests cannot cover:
 #   - Real IPv6 ICMPv6 traffic is accepted through an ipv6-address-group rule
 #     on two live routers talking to each other (end-to-end, not synthetic)
-#   - domain-group configuration applies successfully on production hardware
+#   - domain-group: real IPv4 ICMP is blocked then accepted based on domain-resolved IPs.
+#     Uses system static-host-mapping to add peer.rv.test → peer IP directly to /etc/hosts.
+#     vyos-domain-resolver resolves the name from /etc/hosts and populates the nftables set.
+#     Traffic enforcement is verified: rule 100 drops, rule 50 accepts (lower number wins).
+#
+# DNS note: .test is RFC 2606 reserved — no external delegation, no accidental leak.
+# Wait strategy: apply drop rule first, then retry pings until blocked. This confirms
+# both that vyos-domain-resolver resolved the hostname AND that the rule is enforced.
 - block:
+    # ── Phase 0: Hostname mapping ─────────────────────────────────────────────
+    # Add peer.rv.test → peer's underlay IP directly to /etc/hosts via static-host-mapping.
+    # vyos-domain-resolver uses the system resolver which reads /etc/hosts first,
+    # so no DNS server is needed. The .test TLD is RFC 2606 reserved.
+    - name: FW-GROUP-003 - Map peer.rv.test to peer underlay IP
+      vyos.vyos.vyos_config:
+        lines:
+          - "set system static-host-mapping host-name 'peer.rv.test' inet '{{ hostvars[rv_peer].rv_underlay_ip }}'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    # ── Phase 1: Underlay setup ───────────────────────────────────────────────
     - name: FW-GROUP-003 - Set up eth1 underlay IPv4
       vyos.vyos.vyos_config:
         lines:
@@ -27,50 +47,46 @@
           - "set interfaces ethernet eth1 address '{{ rv_ipv6_underlay_ip }}/64'"
       tags: [FW-GROUP-003, firewall, groups]
 
+    - name: FW-GROUP-003 - Wait for eth1 IPv6 address to be active
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces ethernet eth1"
+        wait_for:
+          - "result[0] contains '{{ rv_ipv6_underlay_ip }}'"
+        retries: 10
+        interval: 2
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Wait for IPv6 connectivity to peer (NDP warmup)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_ipv6_underlay_ip }} count 3 deadline 5"
+      register: _fw_group3_ndp_warmup
+      until: "', 0% packet loss' in _fw_group3_ndp_warmup.stdout[0]"
+      retries: 6
+      delay: 3
+      tags: [FW-GROUP-003, firewall, groups]
+
+    # ── Phase A: IPv6 address-group ───────────────────────────────────────────
+    # default-action drop + accept established/related + accept ICMPv6 from address-group.
+    # The address-group explicitly permits the peer's IPv6 address, so pings pass.
     - name: FW-GROUP-003 - Configure IPv6 address-group and domain-group
       vyos.vyos.vyos_config:
         lines:
           - "set firewall group ipv6-address-group {{ rv_fw_group_ipv6_addr }} address '{{ hostvars[rv_peer].rv_ipv6_underlay_ip }}'"
-          - "set firewall group domain-group {{ rv_fw_group_domain }} address 'vyos.net'"
+          - "set firewall group domain-group {{ rv_fw_group_domain }} address 'peer.rv.test'"
       tags: [FW-GROUP-003, firewall, groups]
 
     - name: FW-GROUP-003 - Apply IPv6 address-group in firewall rule
       vyos.vyos.vyos_config:
         lines:
+          - "set firewall ipv6 input filter default-action 'drop'"
+          - "set firewall ipv6 input filter rule 1 action 'accept'"
+          - "set firewall ipv6 input filter rule 1 state established"
+          - "set firewall ipv6 input filter rule 1 state related"
           - "set firewall ipv6 input filter rule 300 action 'accept'"
           - "set firewall ipv6 input filter rule 300 protocol 'ipv6-icmp'"
           - "set firewall ipv6 input filter rule 300 source group address-group '{{ rv_fw_group_ipv6_addr }}'"
-      tags: [FW-GROUP-003, firewall, groups]
-
-    - name: FW-GROUP-003 - Verify (show firewall group)
-      vyos.vyos.vyos_command:
-        commands:
-          - "show firewall group"
-      register: fw_group3_show
-      tags: [FW-GROUP-003, firewall, groups]
-
-    - name: FW-GROUP-003 - Verify domain-group config
-      vyos.vyos.vyos_command:
-        commands:
-          - "show configuration commands | grep 'firewall group domain-group'"
-      register: fw_group3_domain_config
-      tags: [FW-GROUP-003, firewall, groups]
-
-    - name: FW-GROUP-003 - Assert IPv6 address-group and domain-group present with members
-      ansible.builtin.assert:
-        that:
-          - fw_group3_show.stdout is defined
-          - fw_group3_show.stdout | length > 0
-          - "rv_fw_group_ipv6_addr in fw_group3_show.stdout[0]"
-          - "hostvars[rv_peer].rv_ipv6_underlay_ip in fw_group3_show.stdout[0]"
-          - "rv_fw_group_domain in fw_group3_show.stdout[0]"
-          - fw_group3_domain_config.stdout is defined
-          - "'vyos.net' in fw_group3_domain_config.stdout[0]"
-        fail_msg: >-
-          FW-GROUP-003: Groups not found or members missing.
-          Expected {{ rv_fw_group_ipv6_addr }} with {{ hostvars[rv_peer].rv_ipv6_underlay_ip }},
-          {{ rv_fw_group_domain }} with vyos.net.
-          show firewall group: {{ fw_group3_show.stdout[0] | default('(no output)') | truncate(300) }}
       tags: [FW-GROUP-003, firewall, groups]
 
     - import_tasks: ../_helpers/ping_peer.yml
@@ -79,11 +95,74 @@
         _ping_test_id: "FW-GROUP-003"
       tags: [FW-GROUP-003, firewall, groups]
 
-  always:
-    - name: FW-GROUP-003 - Cleanup firewall rule
+    # ── Phase B: domain-group IPv4 traffic enforcement ────────────────────────
+    # Apply drop rule first, then retry pings until blocked. This confirms that
+    # vyos-domain-resolver resolved peer.rv.test (from /etc/hosts) and the nftables
+    # set is populated. Then rule 50 overrides rule 100.
+    - name: FW-GROUP-003 - Apply IPv4 drop rule using domain-group
       vyos.vyos.vyos_config:
         lines:
+          - "set firewall ipv4 input filter rule 100 action 'drop'"
+          - "set firewall ipv4 input filter rule 100 protocol 'icmp'"
+          - "set firewall ipv4 input filter rule 100 source group domain-group '{{ rv_fw_group_domain }}'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Wait for domain-group rule to block ICMP (confirms resolution)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: fw_group3_domain_block
+      until: "'100% packet loss' in fw_group3_domain_block.stdout[0]"
+      retries: 20
+      delay: 5
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Assert domain-group rule blocks IPv4 ICMP
+      ansible.builtin.assert:
+        that:
+          - fw_group3_domain_block.stdout is defined
+          - fw_group3_domain_block.stdout | length > 0
+          - "'100% packet loss' in fw_group3_domain_block.stdout[0]"
+        fail_msg: >-
+          FW-GROUP-003: domain-group drop rule did not block IPv4 ICMP after 20 retries (100s).
+          vyos-domain-resolver may not have resolved peer.rv.test from /etc/hosts.
+          ping output: {{ fw_group3_domain_block.stdout[0] | default('(no output)') | truncate(300) }}
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - name: FW-GROUP-003 - Add IPv4 accept rule 50 (wins over drop rule 100)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv4 input filter rule 50 action 'accept'"
+          - "set firewall ipv4 input filter rule 50 protocol 'icmp'"
+          - "set firewall ipv4 input filter rule 50 source group domain-group '{{ rv_fw_group_domain }}'"
+      tags: [FW-GROUP-003, firewall, groups]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
+        _ping_test_id: "FW-GROUP-003"
+      tags: [FW-GROUP-003, firewall, groups]
+
+  rescue:
+    - name: FW-GROUP-003 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
+  always:
+    - name: FW-GROUP-003 - Cleanup IPv4 domain-group firewall rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter rule 50"
+          - "delete firewall ipv4 input filter rule 100"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
+    - name: FW-GROUP-003 - Cleanup IPv6 firewall rule
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 input filter rule 1"
           - "delete firewall ipv6 input filter rule 300"
+          - "delete firewall ipv6 input filter default-action"
       ignore_errors: true
       tags: [FW-GROUP-003, firewall, groups, cleanup]
 
@@ -92,6 +171,13 @@
         lines:
           - "delete firewall group ipv6-address-group {{ rv_fw_group_ipv6_addr }}"
           - "delete firewall group domain-group {{ rv_fw_group_domain }}"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
+    - name: FW-GROUP-003 - Cleanup static-host-mapping
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete system static-host-mapping host-name 'peer.rv.test'"
       ignore_errors: true
       tags: [FW-GROUP-003, firewall, groups, cleanup]
 

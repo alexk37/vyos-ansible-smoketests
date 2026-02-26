@@ -1,13 +1,42 @@
 ---
 # FW-GROUP-002: Firewall port-group and interface-group
 # Topology: 2-node symmetric
-#   r1: creates port/interface groups, applies in firewall rule, pings r2 underlay
-#   r2: creates port/interface groups, applies in firewall rule, pings r1 underlay
+#   r1: creates port/interface groups, applies in firewall rule with default-action drop,
+#       verifies TCP/22 still reachable (SSH alive = rule accepted it), verifies ICMP blocked
+#   r2: same
+#
+# Assertion logic:
+#   1. Baseline ping before firewall → 0% loss (proves eth1 works)
+#   2. Apply firewall: default-action drop + accept TCP to port-group
+#   3. Post-firewall ping → 100% loss (ICMP not in port-group, dropped by default)
+#   4. SSH connection alive throughout → proves TCP/22 is accepted by the rule
 - block:
     - name: FW-GROUP-002 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      tags: [FW-GROUP-002, firewall, groups]
+
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "FW-GROUP-002"
+      tags: [FW-GROUP-002, firewall, groups]
+
+    - name: FW-GROUP-002 - Wait for underlay connectivity to peer (ARP warmup)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_group2_warmup
+      until: "', 0% packet loss' in _fw_group2_warmup.stdout[0]"
+      retries: 6
+      delay: 3
+      tags: [FW-GROUP-002, firewall, groups]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
+        _ping_test_id: "FW-GROUP-002 baseline"
+        _ping_count: 2
       tags: [FW-GROUP-002, firewall, groups]
 
     - name: FW-GROUP-002 - Configure port-group and interface-group
@@ -22,19 +51,27 @@
     - name: FW-GROUP-002 - Apply groups in firewall rule
       vyos.vyos.vyos_config:
         lines:
+          - "set firewall ipv4 input filter default-action 'drop'"
           - "set firewall ipv4 input filter rule 200 action 'accept'"
           - "set firewall ipv4 input filter rule 200 protocol 'tcp'"
           - "set firewall ipv4 input filter rule 200 destination group port-group '{{ rv_fw_group_port }}'"
       tags: [FW-GROUP-002, firewall, groups]
 
-    - name: FW-GROUP-002 - Verify (show firewall group)
+    - name: FW-GROUP-002 - Verify firewall groups
       vyos.vyos.vyos_command:
         commands:
           - "show firewall group"
       register: fw_group2_show
       tags: [FW-GROUP-002, firewall, groups]
 
-    - name: FW-GROUP-002 - Assert port-group and interface-group present with members
+    - name: FW-GROUP-002 - Verify firewall rule and default-action
+      vyos.vyos.vyos_command:
+        commands:
+          - "show firewall ipv4 input filter"
+      register: fw_group2_rule_show
+      tags: [FW-GROUP-002, firewall, groups]
+
+    - name: FW-GROUP-002 - Assert port-group, interface-group, rule and default-action present
       ansible.builtin.assert:
         that:
           - fw_group2_show.stdout is defined
@@ -44,21 +81,47 @@
           - "'22' in fw_group2_show.stdout[0]"
           - "'443' in fw_group2_show.stdout[0]"
           - "rv_eth_test_interfaces[0] in fw_group2_show.stdout[0]"
-        fail_msg: "FW-GROUP-002: Groups or members not found. Expected {{ rv_fw_group_port }} with ports 22/443, {{ rv_fw_group_interface }} with {{ rv_eth_test_interfaces[0] }}. Got: {{ fw_group2_show.stdout[0] | default('(no output)') | truncate(300) }}"
+          - fw_group2_rule_show.stdout is defined
+          - "'drop' in fw_group2_rule_show.stdout[0]"
+          - "rv_fw_group_port in fw_group2_rule_show.stdout[0]"
+        fail_msg: >-
+          FW-GROUP-002: Groups or rule not found.
+          Expected {{ rv_fw_group_port }} with ports 22/443,
+          {{ rv_fw_group_interface }} with {{ rv_eth_test_interfaces[0] }},
+          default-action drop, rule referencing port-group.
+          show firewall group: {{ fw_group2_show.stdout[0] | default('(no output)') | truncate(200) }}
+          show firewall ipv4 input filter: {{ fw_group2_rule_show.stdout[0] | default('(no output)') | truncate(200) }}
       tags: [FW-GROUP-002, firewall, groups]
 
-    - import_tasks: ../_helpers/ping_peer.yml
-      vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
-        _ping_test_id: "FW-GROUP-002"
-        _ping_count: 2
+    - name: FW-GROUP-002 - Ping peer (expect ICMP blocked by default-action drop)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: fw_group2_blocked_ping
       tags: [FW-GROUP-002, firewall, groups]
+
+    - name: FW-GROUP-002 - Assert ICMP blocked by default-action drop
+      ansible.builtin.assert:
+        that:
+          - fw_group2_blocked_ping.stdout is defined
+          - fw_group2_blocked_ping.stdout | length > 0
+          - "'100% packet loss' in fw_group2_blocked_ping.stdout[0]"
+        fail_msg: >-
+          FW-GROUP-002: Expected ICMP blocked by default-action drop but ping succeeded.
+          Output: {{ fw_group2_blocked_ping.stdout[0] | default('(no output)') | truncate(300) }}
+      tags: [FW-GROUP-002, firewall, groups]
+
+  rescue:
+    - name: FW-GROUP-002 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-GROUP-002 - Cleanup firewall rule
       vyos.vyos.vyos_config:
         lines:
           - "delete firewall ipv4 input filter rule 200"
+          - "delete firewall ipv4 input filter default-action"
       ignore_errors: true
       tags: [FW-GROUP-002, firewall, groups, cleanup]
 

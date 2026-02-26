@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [VXLAN-001, interfaces, vxlan]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "VXLAN-001"
+      tags: [VXLAN-001, interfaces, vxlan]
+
     - name: VXLAN-001 - Configure VXLAN
       vyos.vyos.vyos_config:
         lines:
@@ -50,6 +55,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_vxlan_overlay_ip }}"
         _ping_test_id: "VXLAN-001"
       tags: [VXLAN-001, interfaces, vxlan]
+
+  rescue:
+    - name: VXLAN-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: VXLAN-001 - Cleanup VXLAN

@@ -79,6 +79,11 @@
         fail_msg: "OVPN-001: OpenVPN config properties not found. Expected site-to-site, udp, tls with ovpn_test cert. Got: {{ ovpn_config.stdout[0] | default('(no output)') | truncate(300) }}"
       tags: [OVPN-001, interfaces, openvpn]
 
+  rescue:
+    - name: OVPN-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: OVPN-001 - Cleanup OpenVPN interface and PKI cert
       vyos.vyos.vyos_config:

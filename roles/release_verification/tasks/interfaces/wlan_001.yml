@@ -29,6 +29,11 @@
       when: wlan_show is not failed
       tags: [WLAN-001, interfaces, wireless]
 
+  rescue:
+    - name: WLAN-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: WLAN-001 - Cleanup wireless if configured
       vyos.vyos.vyos_config:

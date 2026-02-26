@@ -9,7 +9,7 @@
   tags: [interfaces, bridge, BRIDGE-001]
 
 - import_tasks: bridge_002.yml
-  tags: [interfaces, bridge, firewall, BRIDGE-002]
+  tags: [interfaces, bridge, BRIDGE-002]
 
 - import_tasks: dummy_001.yml
   tags: [interfaces, dummy, DUMMY-001]

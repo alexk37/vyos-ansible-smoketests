@@ -39,6 +39,11 @@
         fail_msg: "BRIDGE-001: Bridge config incorrect. Expected STP and member {{ rv_eth_test_interfaces[1] }}. show: {{ bridge_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ bridge_config.stdout[0] | default('(no output)') | truncate(200) }}"
       tags: [BRIDGE-001, interfaces, bridge]
 
+  rescue:
+    - name: BRIDGE-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: BRIDGE-001 - Cleanup bridge
       vyos.vyos.vyos_config:

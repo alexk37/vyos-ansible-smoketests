@@ -29,6 +29,11 @@
       when: wwan_show is not failed
       tags: [WWAN-001, interfaces, wwan]
 
+  rescue:
+    - name: WWAN-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: WWAN-001 - Cleanup WWAN if configured
       vyos.vyos.vyos_config:

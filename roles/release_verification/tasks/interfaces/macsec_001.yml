@@ -53,6 +53,11 @@
         fail_msg: "MACSEC-001: MACsec config incorrect. show: {{ macsec_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ macsec_config.stdout[0] | default('(no output)') | truncate(200) }}"
       tags: [MACSEC-001, interfaces, macsec]
 
+  rescue:
+    - name: MACSEC-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: MACSEC-001 - Cleanup MACsec
       vyos.vyos.vyos_config:

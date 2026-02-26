@@ -38,6 +38,11 @@
         fail_msg: "VETH-001: Virtual ethernet pair not found. Expected veth0 with {{ rv_ipv4_prefix }}.60 and veth1. veth0: {{ veth_show.stdout[0] | default('(no output)') | truncate(200) }} veth1: {{ veth1_show.stdout[0] | default('(no output)') | truncate(200) }}"
       tags: [VETH-001, interfaces, virtual-ethernet]
 
+  rescue:
+    - name: VETH-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: VETH-001 - Cleanup virtual-ethernet
       vyos.vyos.vyos_config:

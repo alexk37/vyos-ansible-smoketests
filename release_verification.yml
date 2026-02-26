@@ -12,6 +12,7 @@
 
 - hosts: "{{ target_host | default('vyos_hosts') }}"
   gather_facts: false
+  ignore_unreachable: true
 
   roles:
     - release_verification

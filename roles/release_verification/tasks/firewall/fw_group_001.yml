@@ -10,6 +10,16 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [FW-GROUP-001, firewall, groups]
 
+    - name: FW-GROUP-001 - Wait for eth1 address to be active
+      vyos.vyos.vyos_command:
+        commands:
+          - "show interfaces ethernet eth1 brief"
+        wait_for:
+          - "result[0] contains '{{ rv_underlay_ip }}'"
+        retries: 10
+        interval: 2
+      tags: [FW-GROUP-001, firewall, groups]
+
     - name: FW-GROUP-001 - Configure address-group and network-group
       vyos.vyos.vyos_config:
         lines:
@@ -20,6 +30,12 @@
     - name: FW-GROUP-001 - Apply groups in firewall rule
       vyos.vyos.vyos_config:
         lines:
+          - "set firewall ipv4 input filter default-action 'drop'"
+          - "set firewall ipv4 input filter rule 1 action 'accept'"
+          - "set firewall ipv4 input filter rule 1 state established"
+          - "set firewall ipv4 input filter rule 1 state related"
+          - "set firewall ipv4 input filter rule 2 action 'accept'"
+          - "set firewall ipv4 input filter rule 2 inbound-interface name 'eth0'"
           - "set firewall ipv4 input filter rule 100 action 'accept'"
           - "set firewall ipv4 input filter rule 100 protocol 'icmp'"
           - "set firewall ipv4 input filter rule 100 source group address-group '{{ rv_fw_group_address }}'"
@@ -43,17 +59,33 @@
         fail_msg: "FW-GROUP-001: Groups or members not found. Expected groups {{ rv_fw_group_address }}, {{ rv_fw_group_network }} with IP {{ hostvars[rv_peer].rv_underlay_ip }}. Got: {{ fw_group_show.stdout[0] | default('(no output)') | truncate(300) }}"
       tags: [FW-GROUP-001, firewall, groups]
 
-    - import_tasks: ../_helpers/ping_peer.yml
-      vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
-        _ping_test_id: "FW-GROUP-001"
+    # Both routers apply default-action drop + accept rules in parallel. One node may
+    # start pinging before the peer's nftables rules are fully active, or simultaneous
+    # bidirectional pings can put conntrack into an asymmetric state. Retry until the
+    # full path (address-group → accept rule → reply → established) is stable.
+    - name: FW-GROUP-001 - Wait for address-group rule to pass ICMP (peer sync)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_group_001_ping
+      until: "', 0% packet loss' in _fw_group_001_ping.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-GROUP-001, firewall, groups]
+
+  rescue:
+    - name: FW-GROUP-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-GROUP-001 - Cleanup firewall rule
       vyos.vyos.vyos_config:
         lines:
+          - "delete firewall ipv4 input filter rule 1"
+          - "delete firewall ipv4 input filter rule 2"
           - "delete firewall ipv4 input filter rule 100"
+          - "delete firewall ipv4 input filter default-action"
       ignore_errors: true
       tags: [FW-GROUP-001, firewall, groups, cleanup]
 

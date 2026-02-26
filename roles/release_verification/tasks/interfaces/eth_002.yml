@@ -33,6 +33,11 @@
         _ping_test_id: "ETH-002"
       tags: [ETH-002, interfaces, ethernet]
 
+  rescue:
+    - name: ETH-002 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: ETH-002 - Cleanup VLAN
       vyos.vyos.vyos_config:

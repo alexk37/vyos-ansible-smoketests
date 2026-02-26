@@ -67,6 +67,8 @@
     - name: FW-IPV4-002 - Assert baseline routing OK
       ansible.builtin.assert:
         that:
+          - fw_ipv4_fwd_baseline.stdout is defined
+          - fw_ipv4_fwd_baseline.stdout | length > 0
           - "', 0% packet loss' in fw_ipv4_fwd_baseline.stdout[0]"
         fail_msg: >-
           FW-IPV4-002: Baseline routing r1→r3 failed before any filter was applied.
@@ -97,6 +99,8 @@
     - name: FW-IPV4-002 - Assert ICMP forwarding blocked
       ansible.builtin.assert:
         that:
+          - fw_ipv4_fwd_block.stdout is defined
+          - fw_ipv4_fwd_block.stdout | length > 0
           - "'100% packet loss' in fw_ipv4_fwd_block.stdout[0]"
         fail_msg: >-
           FW-IPV4-002: Expected forwarded ICMP to be dropped but ping succeeded.
@@ -126,12 +130,19 @@
     - name: FW-IPV4-002 - Assert ICMP forwarding accepted
       ansible.builtin.assert:
         that:
+          - fw_ipv4_fwd_accept.stdout is defined
+          - fw_ipv4_fwd_accept.stdout | length > 0
           - "', 0% packet loss' in fw_ipv4_fwd_accept.stdout[0]"
         fail_msg: >-
           FW-IPV4-002: Expected ICMP to be forwarded (accept rule 50 > drop rule 100) but ping failed.
           Output: {{ fw_ipv4_fwd_accept.stdout[0] | default('(no output)') | truncate(300) }}
       when: inventory_hostname == 'r1'
       tags: [FW-IPV4-002, firewall, ipv4]
+
+  rescue:
+    - name: FW-IPV4-002 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-IPV4-002 - Cleanup forward filter rules

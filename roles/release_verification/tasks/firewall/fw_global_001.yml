@@ -1,8 +1,29 @@
 ---
-# FW-GLOBAL-001: Firewall global options (all-ping, broadcast-ping)
+# FW-GLOBAL-001: Firewall global options (all-ping, broadcast-ping) — traffic enforcement
 # Topology: 2-node symmetric
-#   r1: enables global ICMP options, pings r2 underlay to verify ICMP allowed
-#   r2: enables global ICMP options, pings r1 underlay to verify ICMP allowed
+#   r1: configures all-ping disable/enable with a permissive baseline firewall, verifies ICMP
+#   r2: same
+#
+# VyOS unit tests (smoketest/scripts/cli/test_firewall.py) already cover:
+#   - CLI → sysctl/nftables translation for global-options (all-ping, broadcast-ping)
+#
+# This test adds what unit tests cannot cover:
+#   - all-ping disable/enable enforced on live traffic between two routers.
+#
+# Implementation note — why input filter and single commit:
+#   all-ping is implemented via sysctl net.ipv4.icmp_echo_ignore_all (0=respond, 1=ignore).
+#   The firewall service applies this when firewall config changes. Setting input filter
+#   default-action accept ensures firewall apply runs; global-options and chain in one
+#   commit keeps the apply atomic. Sysctl application can lag after commit; we wait for
+#   icmp_echo_ignore_all before pinging to avoid asymmetric results (one host applied, other not).
+#
+# broadcast-ping: config-only — pinging the broadcast address is not directly supported
+#   by the VyOS ping CLI; the config phase verifies the option commits cleanly.
+#
+# Test structure:
+#   Setup:   input filter default-action accept (creates chain; baseline: all traffic passes)
+#   Phase A: all-ping disable → ICMP echo blocked despite default-action accept
+#   Phase B: all-ping enable + broadcast-ping enable → ICMP passes again; verify config
 - block:
     - name: FW-GLOBAL-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
@@ -10,11 +31,67 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [FW-GLOBAL-001, firewall, global-options]
 
-    - name: FW-GLOBAL-001 - Set firewall global options
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "FW-GLOBAL-001"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    # ── Phase A: all-ping disable blocks ICMP ────────────────────────────────
+    - name: FW-GLOBAL-001 - Create input filter chain and disable all-ping (single commit)
+      vyos.vyos.vyos_config:
+        lines:
+          - "set firewall ipv4 input filter default-action 'accept'"
+          - "set firewall global-options all-ping 'disable'"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Wait for all-ping disable sysctl to be applied
+      vyos.vyos.vyos_command:
+        commands:
+          - "cat /proc/sys/net/ipv4/icmp_echo_ignore_all"
+        register: _icmp_ignore_a
+        until: "_icmp_ignore_a.stdout[0] | trim == '1'"
+        retries: 10
+        delay: 2
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    # Peer has icmp_echo_ignore_all=1 (confirmed above). Ping peer — expect 100% loss.
+    - name: FW-GLOBAL-001 - Wait for all-ping disable to block ICMP
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: fw_global_ping_disabled
+      until: "'100% packet loss' in fw_global_ping_disabled.stdout[0]"
+      retries: 6
+      delay: 3
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Assert ICMP blocked with all-ping disable
+      ansible.builtin.assert:
+        that:
+          - fw_global_ping_disabled.stdout is defined
+          - fw_global_ping_disabled.stdout | length > 0
+          - "'100% packet loss' in fw_global_ping_disabled.stdout[0]"
+        fail_msg: >-
+          FW-GLOBAL-001: Expected ICMP blocked while all-ping is disabled, but ping succeeded.
+          Output: {{ fw_global_ping_disabled.stdout[0] | default('(no output)') | truncate(300) }}
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    # ── Phase B: all-ping enable allows ICMP ─────────────────────────────────
+    - name: FW-GLOBAL-001 - Enable all-ping and broadcast-ping
       vyos.vyos.vyos_config:
         lines:
           - "set firewall global-options all-ping 'enable'"
           - "set firewall global-options broadcast-ping 'enable'"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: FW-GLOBAL-001 - Wait for all-ping enable sysctl to be applied
+      vyos.vyos.vyos_command:
+        commands:
+          - "cat /proc/sys/net/ipv4/icmp_echo_ignore_all"
+        register: _icmp_ignore_b
+        until: "_icmp_ignore_b.stdout[0] | trim == '0'"
+        retries: 10
+        delay: 2
       tags: [FW-GLOBAL-001, firewall, global-options]
 
     - name: FW-GLOBAL-001 - Verify global options in config
@@ -24,7 +101,7 @@
       register: fw_global_show
       tags: [FW-GLOBAL-001, firewall, global-options]
 
-    - name: FW-GLOBAL-001 - Assert global options in output set to enable
+    - name: FW-GLOBAL-001 - Assert global options set to enable in config
       ansible.builtin.assert:
         that:
           - fw_global_show.stdout is defined
@@ -35,11 +112,21 @@
         fail_msg: "FW-GLOBAL-001: Global options not found or not enabled. Got: {{ fw_global_show.stdout[0] | default('(no output)') | truncate(300) }}"
       tags: [FW-GLOBAL-001, firewall, global-options]
 
-    - import_tasks: ../_helpers/ping_peer.yml
-      vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_underlay_ip }}"
-        _ping_test_id: "FW-GLOBAL-001"
+    # Peer has icmp_echo_ignore_all=0 (confirmed above). Ping peer — expect 0% loss.
+    - name: FW-GLOBAL-001 - Wait for all-ping enable to restore ICMP
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_global_001_enable_ping
+      until: "', 0% packet loss' in _fw_global_001_enable_ping.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-GLOBAL-001, firewall, global-options]
+
+  rescue:
+    - name: FW-GLOBAL-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-GLOBAL-001 - Cleanup global options
@@ -47,6 +134,14 @@
         lines:
           - "delete firewall global-options all-ping"
           - "delete firewall global-options broadcast-ping"
+      ignore_errors: true
+      tags: [FW-GLOBAL-001, firewall, global-options, cleanup]
+
+    # Delete the entire input filter chain for clean state on next run.
+    - name: FW-GLOBAL-001 - Cleanup input filter chain
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter"
       ignore_errors: true
       tags: [FW-GLOBAL-001, firewall, global-options, cleanup]
 

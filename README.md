@@ -9,7 +9,7 @@ ansible-playbook main.yml -e 'target_host=r1'
 
 ansible-playbook main.yml --tags show
 
-## Release verification (207 test cases, 25 implemented)
+## Release verification (209 test cases, 31 implemented)
 
 See `roles/release_verification/README.md` for full details, progress, and structure.
 

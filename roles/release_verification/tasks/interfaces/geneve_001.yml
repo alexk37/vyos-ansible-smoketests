@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [GENEVE-001, interfaces, geneve]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "GENEVE-001"
+      tags: [GENEVE-001, interfaces, geneve]
+
     - name: GENEVE-001 - Configure GENEVE
       vyos.vyos.vyos_config:
         lines:
@@ -50,6 +55,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_geneve_overlay_ip }}"
         _ping_test_id: "GENEVE-001"
       tags: [GENEVE-001, interfaces, geneve]
+
+  rescue:
+    - name: GENEVE-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: GENEVE-001 - Cleanup GENEVE

@@ -1,0 +1,17 @@
+---
+# Waits until eth1 shows rv_underlay_ip in 'show interfaces ethernet eth1 brief'.
+# Prevents the timing race where vyos_config returns before the kernel has
+# activated the interface address, causing ARP failures and tunnel setup errors.
+#
+# Required (from caller's context):
+#   rv_underlay_ip  - IPv4 address configured on eth1 (e.g. 10.0.2.1)
+#   _wait_test_id   - test ID prefix for the task name (e.g. "TUN-001")
+
+- name: "{{ _wait_test_id }} - Wait for eth1 underlay IP to be active"
+  vyos.vyos.vyos_command:
+    commands:
+      - "show interfaces ethernet eth1 brief"
+    wait_for:
+      - "result[0] contains '{{ rv_underlay_ip }}'"
+    retries: 10
+    interval: 2

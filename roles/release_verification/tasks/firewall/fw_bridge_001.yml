@@ -67,6 +67,8 @@
     - name: FW-BRIDGE-001 - Assert baseline r1→r3 ICMP crosses bridge
       ansible.builtin.assert:
         that:
+          - fw_bridge_baseline.stdout is defined
+          - fw_bridge_baseline.stdout | length > 0
           - "', 0% packet loss' in fw_bridge_baseline.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Baseline r1→r3 ICMP failed — bridge not forwarding.
@@ -96,6 +98,8 @@
     - name: FW-BRIDGE-001 - Assert bridge forward filter blocks r1→r3 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_fwd_block.stdout is defined
+          - fw_bridge_fwd_block.stdout | length > 0
           - "'100% packet loss' in fw_bridge_fwd_block.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected bridge forward filter to block r1→r3 ICMP but ping succeeded.
@@ -122,6 +126,8 @@
     - name: FW-BRIDGE-001 - Assert bridge forward accept rule allows r1→r3 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_fwd_accept.stdout is defined
+          - fw_bridge_fwd_accept.stdout | length > 0
           - "', 0% packet loss' in fw_bridge_fwd_accept.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in forward filter.
@@ -159,6 +165,8 @@
     - name: FW-BRIDGE-001 - Assert bridge input filter blocks r1→br0 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_in_block.stdout is defined
+          - fw_bridge_in_block.stdout | length > 0
           - "'100% packet loss' in fw_bridge_in_block.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected bridge input filter to block r1→br0 ICMP but ping succeeded.
@@ -185,6 +193,8 @@
     - name: FW-BRIDGE-001 - Assert bridge input accept rule allows r1→br0 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_in_accept.stdout is defined
+          - fw_bridge_in_accept.stdout | length > 0
           - "', 0% packet loss' in fw_bridge_in_accept.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in input filter.
@@ -222,6 +232,8 @@
     - name: FW-BRIDGE-001 - Assert bridge output filter blocks r2→r1 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_out_block.stdout is defined
+          - fw_bridge_out_block.stdout | length > 0
           - "'100% packet loss' in fw_bridge_out_block.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected bridge output filter to block r2→r1 ICMP but ping succeeded.
@@ -248,6 +260,8 @@
     - name: FW-BRIDGE-001 - Assert bridge output accept rule allows r2→r1 ICMP
       ansible.builtin.assert:
         that:
+          - fw_bridge_out_accept.stdout is defined
+          - fw_bridge_out_accept.stdout | length > 0
           - "', 0% packet loss' in fw_bridge_out_accept.stdout[0]"
         fail_msg: >-
           FW-BRIDGE-001: Expected accept rule 50 to override drop rule 100 in output filter.
@@ -285,6 +299,8 @@
     - name: FW-BRIDGE-001 - Assert all four bridge hooks present in config
       ansible.builtin.assert:
         that:
+          - fw_bridge_config.stdout is defined
+          - fw_bridge_config.stdout | length > 0
           - "'bridge forward filter' in fw_bridge_config.stdout[0]"
           - "'bridge input filter' in fw_bridge_config.stdout[0]"
           - "'bridge output filter' in fw_bridge_config.stdout[0]"
@@ -294,6 +310,11 @@
           Got: {{ fw_bridge_config.stdout[0] | default('(no output)') | truncate(400) }}
       when: inventory_hostname == 'r2'
       tags: [FW-BRIDGE-001, firewall, bridge]
+
+  rescue:
+    - name: FW-BRIDGE-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: FW-BRIDGE-001 - Cleanup bridge forward filter rules

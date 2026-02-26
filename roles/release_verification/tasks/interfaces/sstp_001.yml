@@ -28,6 +28,11 @@
         _assert_test_id: "SSTP-001"
       tags: [SSTP-001, interfaces, sstpc]
 
+  rescue:
+    - name: SSTP-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: SSTP-001 - Cleanup SSTP client and PKI
       vyos.vyos.vyos_config:

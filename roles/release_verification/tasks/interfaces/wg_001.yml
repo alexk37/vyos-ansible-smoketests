@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [WG-001, interfaces, wireguard]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "WG-001"
+      tags: [WG-001, interfaces, wireguard]
+
     - name: WG-001 - Generate WireGuard keypair on DUT
       vyos.vyos.vyos_command:
         commands:
@@ -72,11 +77,24 @@
         fail_msg: "WG-001: WireGuard config incorrect. Expected overlay {{ rv_wg_overlay_ip }}, port {{ rv_wireguard_port }}. show: {{ wg_show.stdout[0] | default('(no output)') | truncate(200) }} detail: {{ wg_detail.stdout[0] | default('(no output)') | truncate(200) }}"
       tags: [WG-001, interfaces, wireguard]
 
-    - import_tasks: ../_helpers/ping_peer.yml
-      vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_wg_overlay_ip }}"
-        _ping_test_id: "WG-001"
+    # WireGuard performs a Noise protocol handshake on the first packet. The kernel
+    # queues packets during the handshake (~3-5 seconds) then flushes them all at once,
+    # causing high RTTs and partial loss. Retry until the tunnel is established and
+    # packets flow at normal latency.
+    - name: WG-001 - Wait for WireGuard tunnel to establish (handshake warmup)
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_wg_overlay_ip }} count 3 deadline 5"
+      register: _wg_001_tunnel_warmup
+      until: "', 0% packet loss' in _wg_001_tunnel_warmup.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [WG-001, interfaces, wireguard]
+
+  rescue:
+    - name: WG-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: WG-001 - Cleanup WireGuard

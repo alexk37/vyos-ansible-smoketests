@@ -10,6 +10,11 @@
           - "set interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
       tags: [DUMMY-001, interfaces, dummy]
 
+    - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
+      vars:
+        _wait_test_id: "DUMMY-001"
+      tags: [DUMMY-001, interfaces, dummy]
+
     - name: DUMMY-001 - Set up OSPF for underlay + redistribute connected
       vyos.vyos.vyos_config:
         lines:
@@ -51,6 +56,11 @@
         _ping_target: "{{ hostvars[rv_peer].rv_dummy_ip }}"
         _ping_test_id: "DUMMY-001"
       tags: [DUMMY-001, interfaces, dummy]
+
+  rescue:
+    - name: DUMMY-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: DUMMY-001 - Cleanup dummy interface

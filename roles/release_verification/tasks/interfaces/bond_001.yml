@@ -2,7 +2,7 @@
 # BOND-001: Configure interface bonding and verify member interfaces
 # Topology: 1-node
 #   r1: creates bond0 with eth1+eth2 as members, verifies bond state
-# Self-contained: uses eth1+eth2 as bond members (no pre-existing addresses assumed).
+# Self-contained: cloud-init only assigns eth0; eth1/eth2 start address-free.
 # Cleanup removes the bond, releasing the member interfaces for other tests.
 - block:
     - name: BOND-001 - Configure bonding with members
@@ -38,6 +38,11 @@
           - "rv_eth_test_interfaces[1] in bond_detail.stdout[0]"
         fail_msg: "BOND-001: Bond members not found. Expected {{ rv_eth_test_interfaces[0] }} and {{ rv_eth_test_interfaces[1] }}. Got: {{ bond_detail.stdout[0] | default('(no output)') | truncate(300) }}"
       tags: [BOND-001, interfaces, bonding]
+
+  rescue:
+    - name: BOND-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
 
   always:
     - name: BOND-001 - Cleanup bonding

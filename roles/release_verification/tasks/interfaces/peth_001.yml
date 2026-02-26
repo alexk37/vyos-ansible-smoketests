@@ -35,6 +35,11 @@
         fail_msg: "PETH-001: Pseudo-ethernet peth0 source-interface not configured correctly. Expected source {{ rv_eth_test_interfaces[0] }}. show: {{ peth_show.stdout[0] | default('(no output)') | truncate(200) }} config: {{ peth_config.stdout[0] | default('(no output)') | truncate(200) }}"
       tags: [PETH-001, interfaces, pseudo-ethernet]
 
+  rescue:
+    - name: PETH-001 - Record test failure
+      ansible.builtin.set_fact:
+        _test_failed: true
+
   always:
     - name: PETH-001 - Cleanup pseudo-ethernet
       vyos.vyos.vyos_config:
