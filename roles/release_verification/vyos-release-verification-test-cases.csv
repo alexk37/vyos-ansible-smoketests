@@ -1,0 +1,216 @@
+category,subcategory,test_case_id,test_case_description
+interfaces,bonding,BOND-001,Configure interface bonding and verify member interfaces
+interfaces,bridge,BRIDGE-001,Configure bridge and add member interfaces
+interfaces,bridge,BRIDGE-002,Bridge firewall (prerouting/forward/input/output) rules apply
+interfaces,dummy,DUMMY-001,Create dummy interface with IPv4/IPv6 address
+interfaces,ethernet,ETH-001,Configure ethernet interface address (static/DHCP)
+interfaces,ethernet,ETH-002,VLAN subinterfaces on ethernet
+interfaces,geneve,GENEVE-001,Configure GENEVE tunnel interface
+interfaces,l2tpv3,L2TPV3-001,Configure L2TPv3 pseudowire
+interfaces,loopback,LOOP-001,Configure loopback interface
+interfaces,macsec,MACSEC-001,Configure MACsec on ethernet
+interfaces,openvpn,OVPN-001,OpenVPN interface server configuration
+interfaces,openvpn,OVPN-002,OpenVPN Client configuration and connectivity
+interfaces,wireguard,WG-001,WireGuard interface and peer configuration
+interfaces,wireguard,WG-002,WireGuard key generation and preshared key
+interfaces,pppoe,PPPOE-001,PPPoE client interface (dial-on-demand)
+interfaces,pseudo-ethernet,PETH-001,Pseudo-ethernet (veth) pair
+interfaces,sstp-client,SSTP-001,SSTP client interface
+interfaces,tunnel,TUN-001,IPIP tunnel interface configuration
+interfaces,tunnel,TUN-002,GRE tunnel interface configuration
+interfaces,virtual-ethernet,VETH-001,Virtual ethernet interface
+interfaces,vti,VTI-001,VTI (IPsec) interface
+interfaces,vxlan,VXLAN-001,VXLAN interface and multicast/unicast
+interfaces,wireless,WLAN-001,Wireless interface configuration
+interfaces,wwan,WWAN-001,WWAN modem interface
+firewall,global-options,FW-GLOBAL-001,Firewall global options (e.g. all-ping broadcast-ping)
+firewall,groups,FW-GROUP-001,Address-group and network-group
+firewall,groups,FW-GROUP-002,Port-group and interface-group
+firewall,groups,FW-GROUP-003,IPv6 address-group and domain-group
+firewall,ipv4,FW-IPV4-001,IPv4 input filter rules
+firewall,ipv4,FW-IPV4-002,IPv4 forward filter rules
+firewall,ipv4,FW-IPV4-003,IPv4 output filter and prerouting raw
+firewall,ipv6,FW-IPV6-001,IPv6 input/forward/output filter rules
+firewall,bridge,FW-BRIDGE-001,Bridge firewall (prerouting/forward/input/output)
+firewall,flowtables,FW-FLOW-001,Flowtable configuration
+firewall,zone,FW-ZONE-001,Zone-based firewall and zone policies
+nat,nat44,NAT44-001,Source NAT masquerade
+nat,nat44,NAT44-002,Source NAT translation
+nat,nat44,NAT44-003,Destination NAT rules
+nat,nat64,NAT64-001,NAT64 configuration and translation
+nat,nat66,NAT66-001,NAT66 (IPv6 to IPv6) rules
+nat,cgnat,CGNAT-001,CGNAT (carrier-grade NAT) configuration
+protocols,arp,ARP-001,ARP configuration (timeout etc.)
+protocols,babel,BABEL-001,Babel routing protocol configuration and adjacency
+protocols,bfd,BFD-001,BFD session and multihop
+protocols,bgp,BGP-001,BGP neighbor and address-family (IPv4unicast)
+protocols,bgp,BGP-002,BGP neighbor and address-family (IPv6 unicast)
+protocols,bgp,BGP-003,BGP route reflector 
+protocols,bgp,BGP-004,BGP peer groups
+protocols,bgp,BGP-005,BGP L2VPN EVPN
+protocols,bgp,BGP-006,BGP redistribution
+protocols,bgp,BGP-007,BGP route-maps
+protocols,failover,FAILOVER-001,Failover protocol configuration
+protocols,igmp-proxy,IGMP-001,IGMP proxy
+protocols,isis,ISIS-001,IS-IS routing configuration
+protocols,mpls,MPLS-001,MPLS LDP and static labels
+protocols,multicast,MCAST-001,Multicast routing (PIM)
+protocols,openfabric,OPENFABRIC-001,Open Fabric protocol
+protocols,ospf,OSPF-001,OSPF area and interface configuration
+protocols,ospf,OSPF-002,OSPF redistribution and route filtering
+protocols,pim,PIM-001,PIM (IPv4) configuration
+protocols,pim6,PIM6-001,PIM6 (IPv6) configuration
+protocols,rip,RIP-001,RIP and RIPng configuration
+protocols,rpki,RPKI-001,RPKI configuration and route validation
+protocols,segment-routing,SR-001,Segment routing configuration
+protocols,static,STATIC-001,Static IPv4 route
+protocols,static,STATIC-002,Static IPv6 route (route6)
+policy,access-list,POL-ACL-001,Access-list configuration
+policy,as-path-list,POL-AS-001,AS path list
+policy,community-list,POL-COMM-001,Community list and large-community-list
+policy,extcommunity-list,POL-EXT-001,Extended community list
+policy,prefix-list,POL-PFX-001,Prefix list
+policy,route,POL-ROUTE-001,Policy route (IPv4/IPv6) and rule set
+policy,route-map,POL-RM-001,Route-map match and set
+policy,local-route,POL-LOCAL-001,Local route policy
+service,broadcast-relay,SVC-BR-001,Broadcast relay service
+service,config-sync,SVC-CFG-001,Config sync service
+service,conntrack-sync,SVC-CONN-001,Conntrack sync
+service,console-server,SVC-CONSOLE-001,Console server (serial)
+service,dhcp-relay,SVC-DHCPR-001,DHCP relay listen/upstream interfaces and server
+service,dhcp-server,SVC-DHCP-001,DHCP server shared-network and subnet
+service,dhcp-server,SVC-DHCP-002,DHCPv6 server shared-network and subnet
+service,dhcp-server,SVC-DHCP-003,DHCP static mapping and options
+service,dhcp-server,SVC-DHCP-004,DHCPv6 static mapping and options
+service,dhcp-server,SVC-DHCP-005,DHCP dynamic DNS update
+service,dns,SVC-DNS-001,DNS forwarding listen-address and allow-from
+service,dns,SVC-DNS-002,DNS forwarding cache and recursion
+service,eventhandler,SVC-EVT-001,Event handler configuration
+service,https,SVC-HTTPS-001,HTTPS API service and certificate
+service,ipoe-server,SVC-IPOE-001,IPoE server
+service,lldp,SVC-LLDP-001,LLDP service
+service,mdns,SVC-MDNS-001,mDNS reflector
+service,monitoring,SVC-MON-001,Monitoring (e.g. Prometheus) export
+service,ntp,SVC-NTP-001,NTP server service
+service,pppoe-server,SVC-PPPOE-001,PPPoE server
+service,router-advert,SVC-RA-001,Router advertisement (IPv6)
+service,salt-minion,SVC-SALT-001,Salt minion
+service,snmp,SVC-SNMP-001,SNMP Agent and Community (Inbound)
+service,snmp,SVC-SNMP-002,SNMP Traps and Destinations (Outbound)
+service,ssh,SVC-SSH-001,SSH service and listen address
+service,ssh,SVC-SSH-002,SSH disable-host-validation and key options
+service,suricata,SVC-SURICATA-001,Suricata IDS/IPS
+service,tftp-server,SVC-TFTP-001,TFTP server
+service,webproxy,SVC-WEBPROXY-001,Web proxy (forward proxy)
+system,acceleration,SYS-ACC-001,Offload/acceleration options
+system,conntrack,SYS-CONN-001,Conntrack ignore rules and timeout
+system,console,SYS-CONSOLE-001,Console device and speed
+system,config-management,SYS-CFG-001,Commit revisions and config management
+system,default-route,SYS-DEF-001,Default route (system)
+system,flow-accounting,SYS-FLOW-001,Flow accounting
+system,frr,SYS-FRR-001,FRR (routing daemon) options
+system,host-name,SYS-HOST-001,Hostname configuration
+system,ip,SYS-IP-001,System IP options (e.g. disable redirects)
+system,ipv6,SYS-IPV6-001,System IPv6 options
+system,lcd,SYS-LCD-001,LCD display
+system,login,SYS-LOGIN-001,User login and authentication (password/public-keys)
+system,login,SYS-LOGIN-002,User level (admin/operator)
+system,name-server,SYS-NS-001,System name-server (DNS)
+system,name-server,SYS-NS-002,Domain search list
+system,option,SYS-OPT-001,System option (ctrl-alt-delete reboot-on-panic)
+system,option,SYS-OPT-002,Startup beep and root-partition-auto-resize
+system,proxy,SYS-PROXY-001,System proxy
+system,sflow,SYS-SFLOW-001,sFlow configuration
+system,sysctl,SYS-SYSCTL-001,Sysctl parameters
+system,syslog,SYS-SYSLOG-001,Syslog global (facility/level)
+system,syslog,SYS-SYSLOG-002,Syslog console and remote (UDP/TCP)
+system,syslog,SYS-SYSLOG-003,Syslog TLS and source-address
+system,task-scheduler,SYS-TASK-001,Task scheduler (cron)
+system,time-zone,SYS-TZ-001,Time zone
+system,updates,SYS-UPD-001,Image update configuration
+system,watchdog,SYS-WDOG-001,Watchdog
+trafficpolicy,qos,QOS-001,Traffic policy apply to interface (ingress/egress)
+trafficpolicy,qos,QOS-002,Drop-tail and fair-queue policies
+trafficpolicy,qos,QOS-003,FQ-CoDel and limiter (ingress policer)
+trafficpolicy,qos,QOS-004,Shaper (HTB) with classes and match
+trafficpolicy,qos,QOS-005,Priority queue and round-robin (DRR)
+trafficpolicy,qos,QOS-006,Rate-control and network-emulator
+trafficpolicy,qos,QOS-007,Random-detect (RED) and CAKE
+trafficpolicy,qos,QOS-008,Traffic-match-group and DSCP
+vpn,ipsec,VPN-IPSEC-001,IPsec site-to-site tunnel (IKEv2)
+vpn,ipsec,VPN-IPSEC-002,IPsec remote access (client)
+vpn,ipsec,VPN-IPSEC-003,IPsec profile and proposal
+vpn,l2tp,VPN-L2TP-001,L2TP server and client
+vpn,openconnect,VPN-OC-001,OpenConnect (Cisco AnyConnect) server
+vpn,pptp,VPN-PPTP-001,PPTP server
+vpn,rsa-keys,VPN-RSA-001,RSA keys for VPN
+vpn,sstp,VPN-SSTP-001,SSTP server
+vpn,dmvpn,VPN-DMVPN-001,DMVPN configuration
+highavailability,vrrp,HA-VRRP-001,VRRP group (interface vrid address)
+highavailability,vrrp,HA-VRRP-002,VRRP priority and preemption
+highavailability,vrrp,HA-VRRP-003,VRRP sync-group and track interface
+highavailability,vrrp,HA-VRRP-004,VRRP health-check and transition scripts
+highavailability,vrrp,HA-VRRP-005,VRRP unicast and RFC3768 compatibility
+highavailability,virtual-server,HA-VS-001,Virtual server (load balance) algorithm and real-server
+highavailability,virtual-server,HA-VS-002,Virtual server forward-method and health-check
+loadbalancing,wan,LB-WAN-001,WAN load balancing
+loadbalancing,haproxy,LB-HA-001,HAProxy service configuration
+container,container,CONT-001,Container name image and registry
+container,container,CONT-002,Container network and volume
+container,container,CONT-003,Container start/stop and attach
+pki,pki,PKI-001,PKI CA and certificate (set pki ca/certificate)
+pki,pki,PKI-002,Generate pki ca/certificate/dh and install
+pki,pki,PKI-003,ACME certificate (Let's Encrypt)
+pki,pki,PKI-004,Import pki from file
+pki,pki,PKI-005,WireGuard/OpenVPN key generation via PKI
+vrf,vrf,VRF-001,VRF name and table and interface binding
+vrf,vrf,VRF-002,VRF protocol (BGP/OSPF/static) and route-map
+vrf,vrf,VRF-003,VRF service (e.g. DHCP server in VRF)
+vrf,vrf,VRF-004,show ip route vrf / ping vrf / force vrf
+vrf,vrf,VRF-005,L3VPN VRF route leaking (RD/RT/import export vpn)
+vpp,dataplane,VPP-DP-001,VPP dataplane system and core settings
+vpp,dataplane,VPP-DP-002,VPP buffers and memory (hugepages)
+vpp,dataplane,VPP-DP-003,VPP CPU allocation
+vpp,dataplane,VPP-DP-004,VPP dataplane interface and LCP (Linux Control Plane) integration
+vpp,dataplane,VPP-DP-005,VPP dataplane IPv6 and IPsec options
+vpp,dataplane,VPP-DP-006,VPP l2learn and logging
+vpp,dataplane,VPP-DP-007,VPP UNIX API socket
+vpp,interfaces,VPP-IF-001,VPP bonding and bridge interfaces
+vpp,interfaces,VPP-IF-002,VPP GRE and IPIP interfaces
+vpp,interfaces,VPP-IF-003,VPP kernel interface integration (LCP)
+vpp,interfaces,VPP-IF-004,VPP loopback and VXLAN
+vpp,interfaces,VPP-IF-005,VPP xconnect (L2 cross-connect)
+vpp,features,VPP-ACL-001,VPP ACL configuration
+vpp,features,VPP-IPFIX-001,VPP IPFIX
+vpp,features,VPP-IPSEC-001,VPP IPsec feature
+vpp,features,VPP-NAT-001,VPP NAT44 (source/destination)
+vpp,features,VPP-NAT-002,VPP CGNAT
+vpp,features,VPP-SFLOW-001,VPP sFlow
+vpp,general,VPP-001,VPP startup and interface bring-up (config commit)
+vpp,general,VPP-002,VPP troubleshooting and diagnostics
+operation,information,OP-INFO-001,Operational mode show commands and system information
+operation,boot-options,OP-BOOT-001,Boot options (select image boot)
+operation,upgrade-recovery,OP-UPG-001,Upgrade process (image add and reboot)
+operation,upgrade-recovery,OP-UPG-002,Recovery after failed upgrade (rollback to previous image)
+operation,password-recovery,OP-PWR-001,Password recovery procedure
+installation,install,INST-001,Fresh install from image (boot and basic setup)
+installation,image,INST-002,Image management (list set default delete)
+installation,update,INST-003,System update (add image upgrade)
+installation,bare-metal,INST-004,Bare-metal install
+installation,secure-boot,INST-005,Secure Boot enablement and verification
+installation,virtual,INST-006,Virtual install (e.g. libvirt Proxmox VMware EVE-NG Docker)
+installation,cloud,INST-007,Cloud deploy (AWS Azure GCP Oracle)
+config-migration,migration,MIG-001,Config migration on config load (ConfigMigrate run)
+config-migration,migration,MIG-002,Migration scripts execution (component N-to-M scripts)
+config-migration,migration,MIG-003,Upgrade from previous release with existing config (migration applied)
+config-migration,migration,MIG-004,Rollback or recovery when migration fails
+cli,commit,CLI-001,Commit and commit comment
+cli,commit,CLI-002,Commit-confirm and confirm/cancel
+cli,compare,CLI-003,Compare (working vs saved and revision N vs M)
+cli,rollback,CLI-004,Rollback to revision N (with reboot)
+cli,session,CLI-005,Exit discard (discard uncommitted changes and exit)
+cli,revisions,CLI-006,Show system commit and commit-revisions
+cli,archive,CLI-007,Commit-archive (remote backup on commit)
+system,config-encryption,TPM-001,TPM config encryption enable (vyos-config-encrypt / crypt enable)
+system,config-encryption,TPM-002,Encrypted config volume load (TPM or recovery key at boot)
+system,config-encryption,TPM-003,TPM config encryption disable and recovery key use
