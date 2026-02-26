@@ -54,6 +54,16 @@
         fail_msg: "L2TPV3-001: l2tpeth100 config incorrect. Expected tunnel-id 100 and source-address. Got: {{ l2tp_config.stdout[0] | default('(no output)') | truncate(300) }}"
       tags: [L2TPV3-001, interfaces, l2tpv3]
 
+    - name: L2TPV3-001 - Verify underlay reachable before overlay ping
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _l2tp_underlay_check
+      until: "', 0% packet loss' in (_l2tp_underlay_check.stdout[0] | default(''))"
+      retries: 6
+      delay: 3
+      tags: [L2TPV3-001, interfaces, l2tpv3]
+
     - import_tasks: ../_helpers/ping_peer.yml
       vars:
         _ping_target: "{{ hostvars[rv_peer].rv_l2tpv3_overlay_ip }}"
