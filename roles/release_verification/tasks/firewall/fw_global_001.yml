@@ -48,10 +48,10 @@
       vyos.vyos.vyos_command:
         commands:
           - "cat /proc/sys/net/ipv4/icmp_echo_ignore_all"
-        register: _icmp_ignore_a
-        until: "_icmp_ignore_a.stdout[0] | trim == '1'"
-        retries: 10
-        delay: 2
+      register: _icmp_ignore_a
+      until: "_icmp_ignore_a.stdout[0] | trim == '1'"
+      retries: 10
+      delay: 2
       tags: [FW-GLOBAL-001, firewall, global-options]
 
     # Peer has icmp_echo_ignore_all=1 (confirmed above). Ping peer — expect 100% loss.
@@ -60,7 +60,7 @@
         commands:
           - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
       register: fw_global_ping_disabled
-      until: "'100% packet loss' in fw_global_ping_disabled.stdout[0]"
+      until: "'100% packet loss' in (fw_global_ping_disabled.stdout[0] | default(''))"
       retries: 6
       delay: 3
       tags: [FW-GLOBAL-001, firewall, global-options]
@@ -88,10 +88,10 @@
       vyos.vyos.vyos_command:
         commands:
           - "cat /proc/sys/net/ipv4/icmp_echo_ignore_all"
-        register: _icmp_ignore_b
-        until: "_icmp_ignore_b.stdout[0] | trim == '0'"
-        retries: 10
-        delay: 2
+      register: _icmp_ignore_b
+      until: "_icmp_ignore_b.stdout[0] | trim == '0'"
+      retries: 10
+      delay: 2
       tags: [FW-GLOBAL-001, firewall, global-options]
 
     - name: FW-GLOBAL-001 - Verify global options in config
@@ -118,7 +118,7 @@
         commands:
           - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
       register: _fw_global_001_enable_ping
-      until: "', 0% packet loss' in _fw_global_001_enable_ping.stdout[0]"
+      until: "', 0% packet loss' in (_fw_global_001_enable_ping.stdout[0] | default(''))"
       retries: 6
       delay: 3
       tags: [FW-GLOBAL-001, firewall, global-options]

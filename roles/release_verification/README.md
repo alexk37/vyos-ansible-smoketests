@@ -16,10 +16,10 @@ roles/release_verification/
     interfaces/               # 22 tests implemented
       main.yml
       bond_001.yml ... wwan_001.yml
-      bond_001.md  ... wwan_001.md   # per-test command/assertion docs
-    firewall/                 # 4 tests implemented
+    firewall/                 # 9 tests implemented
       main.yml
-      fw_global_001.yml ... fw_group_003.yml
+      fw_global_001.yml fw_group_001.yml fw_group_002.yml fw_group_003.yml
+      fw_ipv4_001.yml fw_ipv4_002.yml fw_ipv4_003.yml fw_ipv6_001.yml fw_bridge_001.yml
     nat/ protocols/ policy/ service/ system/ qos/ vpn/ ha/
     loadbalancing/ container/ pki/ vrf/ vpp/ operation/ cli/
     install/ migration/       # placeholder main.yml only
@@ -27,6 +27,8 @@ roles/release_verification/
     main.yml                  # auto-loaded role vars (organized by category)
     test_registry.yml         # metadata for all 207 tests (not auto-loaded)
 ```
+
+`describe_test.py` (project root) lists tests, commands, and assertions for each test. Run `python3 describe_test.py BOND-001` to print one test; use `--all` for all tests; add `--update` to regenerate `.md` sidecar files.
 
 ## Conventions
 
@@ -336,6 +338,7 @@ Current VyOS (rolling 2026) syntax differs from some older documentation:
 | Bridge firewall | `set firewall bridge forward filter` | under `interfaces bridge` |
 | OpenVPN site-to-site | TLS with `tls certificate` + `tls peer-fingerprint` | `shared-secret-key` (deprecated, BF-CBC crash) |
 | FW global options | `show configuration commands \| grep global-options` | `show firewall` |
+| FW inbound-interface | `inbound-interface name 'eth0'` | `inbound-interface interface-name 'eth0'` |
 | IPv6 FW rule source group | `source group address-group 'NAME'` (under `firewall ipv6`) | `source group ipv6-address-group 'NAME'` |
 
 ## VTI note
