@@ -1,5 +1,5 @@
 ---
-# Test registry - metadata for all 207 release verification test cases.
+# Test registry - metadata for all 215 release verification test cases.
 # Source of truth: vyos-release-verification-test-cases.csv
 #
 # Fields:
@@ -14,58 +14,64 @@
 
 rv_test_registry:
 
-  # ─── interfaces (22 tests, 22 implemented) ────────────────────────
+  # ─── interfaces (24 tests, 22 implemented) ────────────────────────
   BOND-001:    { category: interfaces, subcategory: bonding, topology: single, status: implemented, description: "Configure interface bonding and verify member interfaces" }
   BRIDGE-001:  { category: interfaces, subcategory: bridge, topology: single, status: implemented, description: "Configure bridge and add member interfaces" }
-  BRIDGE-002:  { category: interfaces, subcategory: bridge, topology: single, status: implemented, description: "Bridge firewall rules apply" }
+  BRIDGE-002:  { category: interfaces, subcategory: bridge, topology: single, status: implemented, description: "Bridge firewall (prerouting/forward/input/output) rules apply" }
   DUMMY-001:   { category: interfaces, subcategory: dummy, topology: pair, status: implemented, description: "Create dummy interface with IPv4/IPv6 address" }
-  ETH-001:     { category: interfaces, subcategory: ethernet, topology: pair, status: implemented, description: "Configure ethernet interface address (static)" }
+  ETH-001:     { category: interfaces, subcategory: ethernet, topology: pair, status: implemented, description: "Configure ethernet interface address (static/DHCP)" }
   ETH-002:     { category: interfaces, subcategory: ethernet, topology: pair, status: implemented, description: "VLAN subinterfaces on ethernet" }
   GENEVE-001:  { category: interfaces, subcategory: geneve, topology: pair, status: implemented, description: "Configure GENEVE tunnel interface" }
   L2TPV3-001:  { category: interfaces, subcategory: l2tpv3, topology: pair, status: implemented, description: "Configure L2TPv3 pseudowire" }
   LOOP-001:    { category: interfaces, subcategory: loopback, topology: pair, status: implemented, description: "Configure loopback interface" }
   MACSEC-001:  { category: interfaces, subcategory: macsec, topology: special, status: implemented, description: "Configure MACsec on ethernet" }
-  OVPN-001:    { category: interfaces, subcategory: openvpn, topology: special, status: implemented, description: "OpenVPN interface configuration and connectivity" }
+  OVPN-001:    { category: interfaces, subcategory: openvpn, topology: special, status: implemented, description: "OpenVPN interface server configuration" }
+  OVPN-002:    { category: interfaces, subcategory: openvpn, topology: special, status: pending, description: "OpenVPN Client configuration and connectivity" }
   WG-001:      { category: interfaces, subcategory: wireguard, topology: pair, status: implemented, description: "WireGuard interface and peer configuration" }
   WG-002:      { category: interfaces, subcategory: wireguard, topology: single, status: implemented, description: "WireGuard key generation and preshared key" }
   PPPOE-001:   { category: interfaces, subcategory: pppoe, topology: special, status: implemented, description: "PPPoE client interface (dial-on-demand)" }
-  PETH-001:    { category: interfaces, subcategory: pseudo-ethernet, topology: single, status: implemented, description: "Pseudo-ethernet (macvlan) pair" }
+  PETH-001:    { category: interfaces, subcategory: pseudo-ethernet, topology: single, status: implemented, description: "Pseudo-ethernet (veth) pair" }
   SSTP-001:    { category: interfaces, subcategory: sstp-client, topology: special, status: implemented, description: "SSTP client interface" }
-  TUN-001:     { category: interfaces, subcategory: tunnel, topology: pair, status: implemented, description: "IPIP/GRE/tunnel interface configuration" }
+  TUN-001:     { category: interfaces, subcategory: tunnel, topology: pair, status: implemented, description: "IPIP tunnel interface configuration" }
+  TUN-002:     { category: interfaces, subcategory: tunnel, topology: pair, status: pending, description: "GRE tunnel interface configuration" }
   VETH-001:    { category: interfaces, subcategory: virtual-ethernet, topology: single, status: implemented, description: "Virtual ethernet interface" }
   VTI-001:     { category: interfaces, subcategory: vti, topology: pair, status: implemented, description: "VTI (IPsec) interface" }
   VXLAN-001:   { category: interfaces, subcategory: vxlan, topology: pair, status: implemented, description: "VXLAN interface and multicast/unicast" }
   WLAN-001:    { category: interfaces, subcategory: wireless, topology: special, status: implemented, description: "Wireless interface configuration" }
   WWAN-001:    { category: interfaces, subcategory: wwan, topology: single, status: implemented, description: "WWAN modem interface" }
 
-  # ─── firewall (11 tests, 7 implemented) ───────────────────────────
-  FW-GLOBAL-001: { category: firewall, subcategory: global-options, topology: pair,   status: implemented, description: "Firewall global options (all-ping broadcast-ping)" }
+  # ─── firewall (11 tests, 9 implemented) ───────────────────────────
+  FW-GLOBAL-001: { category: firewall, subcategory: global-options, topology: pair,   status: implemented, description: "Firewall global options (e.g. all-ping broadcast-ping)" }
   FW-GROUP-001:  { category: firewall, subcategory: groups,         topology: pair,   status: implemented, description: "Address-group and network-group" }
   FW-GROUP-002:  { category: firewall, subcategory: groups,         topology: pair,   status: implemented, description: "Port-group and interface-group" }
   FW-GROUP-003:  { category: firewall, subcategory: groups,         topology: pair,   status: implemented, description: "IPv6 address-group and domain-group" }
-  FW-IPV4-001:   { category: firewall, subcategory: ipv4,           topology: pair,   status: implemented, description: "IPv4 input filter rules — drop/accept enforcement and rule ordering" }
-  FW-IPV4-002:   { category: firewall, subcategory: ipv4,           topology: triple, status: implemented, description: "IPv4 forward filter rules — 3-node traffic enforcement" }
+  FW-IPV4-001:   { category: firewall, subcategory: ipv4,           topology: pair,   status: implemented, description: "IPv4 input filter rules" }
+  FW-IPV4-002:   { category: firewall, subcategory: ipv4,           topology: triple, status: implemented, description: "IPv4 forward filter rules" }
   FW-IPV4-003:   { category: firewall, subcategory: ipv4,           topology: pair,   status: implemented, description: "IPv4 output filter and prerouting raw" }
   FW-IPV6-001:   { category: firewall, subcategory: ipv6,           topology: triple, status: implemented, description: "IPv6 input/forward/output filter rules" }
   FW-BRIDGE-001: { category: firewall, subcategory: bridge,         topology: triple, status: implemented, description: "Bridge firewall (prerouting/forward/input/output)" }
   FW-FLOW-001:   { category: firewall, subcategory: flowtables,     topology: pair,   status: pending,     description: "Flowtable configuration" }
   FW-ZONE-001:   { category: firewall, subcategory: zone,           topology: pair,   status: pending,     description: "Zone-based firewall and zone policies" }
 
-  # ─── nat (5 tests, 0 implemented) ─────────────────────────────────
-  NAT44-001: { category: nat, subcategory: nat44, topology: pair, status: pending, description: "Source NAT (masquerade/translation)" }
-  NAT44-002: { category: nat, subcategory: nat44, topology: pair, status: pending, description: "Destination NAT rules" }
+  # ─── nat (6 tests, 0 implemented) ─────────────────────────────────
+  NAT44-001: { category: nat, subcategory: nat44, topology: pair, status: pending, description: "Source NAT masquerade" }
+  NAT44-002: { category: nat, subcategory: nat44, topology: pair, status: pending, description: "Source NAT translation" }
+  NAT44-003: { category: nat, subcategory: nat44, topology: pair, status: pending, description: "Destination NAT rules" }
   NAT64-001: { category: nat, subcategory: nat64, topology: pair, status: pending, description: "NAT64 configuration and translation" }
   NAT66-001: { category: nat, subcategory: nat66, topology: pair, status: pending, description: "NAT66 (IPv6 to IPv6) rules" }
   CGNAT-001: { category: nat, subcategory: cgnat, topology: pair, status: pending, description: "CGNAT (carrier-grade NAT) configuration" }
 
-  # ─── protocols (22 tests, 0 implemented) ──────────────────────────
+  # ─── protocols (25 tests, 0 implemented) ──────────────────────────
   ARP-001:        { category: protocols, subcategory: arp, topology: single, status: pending, description: "ARP configuration (timeout etc.)" }
   BABEL-001:      { category: protocols, subcategory: babel, topology: pair, status: pending, description: "Babel routing protocol configuration and adjacency" }
   BFD-001:        { category: protocols, subcategory: bfd, topology: pair, status: pending, description: "BFD session and multihop" }
-  BGP-001:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP neighbor and address-family (IPv4/IPv6 unicast)" }
-  BGP-002:        { category: protocols, subcategory: bgp, topology: quad, status: pending, description: "BGP route reflector and peer groups" }
-  BGP-003:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP L2VPN EVPN" }
-  BGP-004:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP redistribution and route-maps" }
+  BGP-001:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP neighbor and address-family (IPv4 unicast)" }
+  BGP-002:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP neighbor and address-family (IPv6 unicast)" }
+  BGP-003:        { category: protocols, subcategory: bgp, topology: quad, status: pending, description: "BGP route reflector" }
+  BGP-004:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP peer groups" }
+  BGP-005:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP L2VPN EVPN" }
+  BGP-006:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP redistribution" }
+  BGP-007:        { category: protocols, subcategory: bgp, topology: pair, status: pending, description: "BGP route-maps" }
   FAILOVER-001:   { category: protocols, subcategory: failover, topology: pair, status: pending, description: "Failover protocol configuration" }
   IGMP-001:       { category: protocols, subcategory: igmp-proxy, topology: pair, status: pending, description: "IGMP proxy" }
   ISIS-001:       { category: protocols, subcategory: isis, topology: pair, status: pending, description: "IS-IS routing configuration" }
@@ -92,15 +98,17 @@ rv_test_registry:
   POL-RM-001:    { category: policy, subcategory: route-map, topology: single, status: pending, description: "Route-map match and set" }
   POL-LOCAL-001: { category: policy, subcategory: local-route, topology: single, status: pending, description: "Local route policy" }
 
-  # ─── service (26 tests, 0 implemented) ────────────────────────────
+  # ─── service (28 tests, 0 implemented) ────────────────────────────
   SVC-BR-001:       { category: service, subcategory: broadcast-relay, topology: pair, status: pending, description: "Broadcast relay service" }
   SVC-CFG-001:      { category: service, subcategory: config-sync, topology: pair, status: pending, description: "Config sync service" }
   SVC-CONN-001:     { category: service, subcategory: conntrack-sync, topology: pair, status: pending, description: "Conntrack sync" }
   SVC-CONSOLE-001:  { category: service, subcategory: console-server, topology: single, status: pending, description: "Console server (serial)" }
   SVC-DHCPR-001:    { category: service, subcategory: dhcp-relay, topology: pair, status: pending, description: "DHCP relay listen/upstream interfaces and server" }
   SVC-DHCP-001:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCP server shared-network and subnet" }
-  SVC-DHCP-002:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCP static mapping and options" }
-  SVC-DHCP-003:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCP dynamic DNS update" }
+  SVC-DHCP-002:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCPv6 server shared-network and subnet" }
+  SVC-DHCP-003:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCP static mapping and options" }
+  SVC-DHCP-004:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCPv6 static mapping and options" }
+  SVC-DHCP-005:     { category: service, subcategory: dhcp-server, topology: pair, status: pending, description: "DHCP dynamic DNS update" }
   SVC-DNS-001:      { category: service, subcategory: dns, topology: single, status: pending, description: "DNS forwarding listen-address and allow-from" }
   SVC-DNS-002:      { category: service, subcategory: dns, topology: single, status: pending, description: "DNS forwarding cache and recursion" }
   SVC-EVT-001:      { category: service, subcategory: eventhandler, topology: single, status: pending, description: "Event handler configuration" }
@@ -108,12 +116,13 @@ rv_test_registry:
   SVC-IPOE-001:     { category: service, subcategory: ipoe-server, topology: pair, status: pending, description: "IPoE server" }
   SVC-LLDP-001:     { category: service, subcategory: lldp, topology: pair, status: pending, description: "LLDP service" }
   SVC-MDNS-001:     { category: service, subcategory: mdns, topology: single, status: pending, description: "mDNS reflector" }
-  SVC-MON-001:      { category: service, subcategory: monitoring, topology: single, status: pending, description: "Monitoring (Prometheus) export" }
+  SVC-MON-001:      { category: service, subcategory: monitoring, topology: single, status: pending, description: "Monitoring (e.g. Prometheus) export" }
   SVC-NTP-001:      { category: service, subcategory: ntp, topology: single, status: pending, description: "NTP server service" }
   SVC-PPPOE-001:    { category: service, subcategory: pppoe-server, topology: pair, status: pending, description: "PPPoE server" }
   SVC-RA-001:       { category: service, subcategory: router-advert, topology: pair, status: pending, description: "Router advertisement (IPv6)" }
   SVC-SALT-001:     { category: service, subcategory: salt-minion, topology: single, status: pending, description: "Salt minion" }
-  SVC-SNMP-001:     { category: service, subcategory: snmp, topology: single, status: pending, description: "SNMP agent and community/trap" }
+  SVC-SNMP-001:     { category: service, subcategory: snmp, topology: single, status: pending, description: "SNMP Agent and Community (Inbound)" }
+  SVC-SNMP-002:     { category: service, subcategory: snmp, topology: single, status: pending, description: "SNMP Traps and Destinations (Outbound)" }
   SVC-SSH-001:      { category: service, subcategory: ssh, topology: single, status: pending, description: "SSH service and listen address" }
   SVC-SSH-002:      { category: service, subcategory: ssh, topology: single, status: pending, description: "SSH disable-host-validation and key options" }
   SVC-SURICATA-001: { category: service, subcategory: suricata, topology: single, status: pending, description: "Suricata IDS/IPS" }
@@ -129,10 +138,10 @@ rv_test_registry:
   SYS-FLOW-001:    { category: system, subcategory: flow-accounting, topology: single, status: pending, description: "Flow accounting" }
   SYS-FRR-001:     { category: system, subcategory: frr, topology: single, status: pending, description: "FRR (routing daemon) options" }
   SYS-HOST-001:    { category: system, subcategory: host-name, topology: single, status: pending, description: "Hostname configuration" }
-  SYS-IP-001:      { category: system, subcategory: ip, topology: single, status: pending, description: "System IP options (disable redirects)" }
+  SYS-IP-001:      { category: system, subcategory: ip, topology: single, status: pending, description: "System IP options (e.g. disable redirects)" }
   SYS-IPV6-001:    { category: system, subcategory: ipv6, topology: single, status: pending, description: "System IPv6 options" }
   SYS-LCD-001:     { category: system, subcategory: lcd, topology: special, status: pending, description: "LCD display" }
-  SYS-LOGIN-001:   { category: system, subcategory: login, topology: single, status: pending, description: "User login and authentication" }
+  SYS-LOGIN-001:   { category: system, subcategory: login, topology: single, status: pending, description: "User login and authentication (password/public-keys)" }
   SYS-LOGIN-002:   { category: system, subcategory: login, topology: single, status: pending, description: "User level (admin/operator)" }
   SYS-NS-001:      { category: system, subcategory: name-server, topology: single, status: pending, description: "System name-server (DNS)" }
   SYS-NS-002:      { category: system, subcategory: name-server, topology: single, status: pending, description: "Domain search list" }
@@ -141,16 +150,16 @@ rv_test_registry:
   SYS-PROXY-001:   { category: system, subcategory: proxy, topology: single, status: pending, description: "System proxy" }
   SYS-SFLOW-001:   { category: system, subcategory: sflow, topology: single, status: pending, description: "sFlow configuration" }
   SYS-SYSCTL-001:  { category: system, subcategory: sysctl, topology: single, status: pending, description: "Sysctl parameters" }
-  SYS-SYSLOG-001:  { category: system, subcategory: syslog, topology: single, status: pending, description: "Syslog global (facility/level) and local file" }
+  SYS-SYSLOG-001:  { category: system, subcategory: syslog, topology: single, status: pending, description: "Syslog global (facility/level)" }
   SYS-SYSLOG-002:  { category: system, subcategory: syslog, topology: single, status: pending, description: "Syslog console and remote (UDP/TCP)" }
   SYS-SYSLOG-003:  { category: system, subcategory: syslog, topology: single, status: pending, description: "Syslog TLS and source-address" }
   SYS-TASK-001:    { category: system, subcategory: task-scheduler, topology: single, status: pending, description: "Task scheduler (cron)" }
   SYS-TZ-001:      { category: system, subcategory: time-zone, topology: single, status: pending, description: "Time zone" }
   SYS-UPD-001:     { category: system, subcategory: updates, topology: single, status: pending, description: "Image update configuration" }
   SYS-WDOG-001:    { category: system, subcategory: watchdog, topology: single, status: pending, description: "Watchdog" }
-  SYS-ENC-001:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "TPM config encryption enable" }
-  SYS-ENC-002:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "Encrypted config volume load" }
-  SYS-ENC-003:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "TPM encryption disable and recovery key" }
+  TPM-001:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "TPM config encryption enable (vyos-config-encrypt / crypt enable)" }
+  TPM-002:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "Encrypted config volume load (TPM or recovery key at boot)" }
+  TPM-003:     { category: system, subcategory: config-encryption, topology: single, status: pending, description: "TPM config encryption disable and recovery key use" }
 
   # ─── qos (8 tests, 0 implemented) ─────────────────────────────────
   QOS-001: { category: qos, subcategory: qos, topology: single, status: pending, description: "Traffic policy apply to interface" }
@@ -179,7 +188,7 @@ rv_test_registry:
   HA-VRRP-003: { category: ha, subcategory: vrrp, topology: pair, status: pending, description: "VRRP sync-group and track interface" }
   HA-VRRP-004: { category: ha, subcategory: vrrp, topology: pair, status: pending, description: "VRRP health-check and transition scripts" }
   HA-VRRP-005: { category: ha, subcategory: vrrp, topology: pair, status: pending, description: "VRRP unicast and RFC3768 compatibility" }
-  HA-VS-001:   { category: ha, subcategory: virtual-server, topology: pair, status: pending, description: "Virtual server (load balance) algorithm" }
+  HA-VS-001:   { category: ha, subcategory: virtual-server, topology: pair, status: pending, description: "Virtual server (load balance) algorithm and real-server" }
   HA-VS-002:   { category: ha, subcategory: virtual-server, topology: pair, status: pending, description: "Virtual server forward-method and health-check" }
 
   # ─── loadbalancing (2 tests, 0 implemented) ───────────────────────
@@ -192,7 +201,7 @@ rv_test_registry:
   CONT-003: { category: container, subcategory: container, topology: single, status: pending, description: "Container start/stop and attach" }
 
   # ─── pki (5 tests, 0 implemented) ─────────────────────────────────
-  PKI-001: { category: pki, subcategory: pki, topology: single, status: pending, description: "PKI CA and certificate" }
+  PKI-001: { category: pki, subcategory: pki, topology: single, status: pending, description: "PKI CA and certificate (set pki ca/certificate)" }
   PKI-002: { category: pki, subcategory: pki, topology: single, status: pending, description: "Generate pki ca/certificate/dh and install" }
   PKI-003: { category: pki, subcategory: pki, topology: single, status: pending, description: "ACME certificate (Let's Encrypt)" }
   PKI-004: { category: pki, subcategory: pki, topology: single, status: pending, description: "Import pki from file" }
@@ -201,7 +210,7 @@ rv_test_registry:
   # ─── vrf (5 tests, 0 implemented) ─────────────────────────────────
   VRF-001: { category: vrf, subcategory: vrf, topology: single, status: pending, description: "VRF name and table and interface binding" }
   VRF-002: { category: vrf, subcategory: vrf, topology: pair, status: pending, description: "VRF protocol (BGP/OSPF/static) and route-map" }
-  VRF-003: { category: vrf, subcategory: vrf, topology: pair, status: pending, description: "VRF service (DHCP server in VRF)" }
+  VRF-003: { category: vrf, subcategory: vrf, topology: pair, status: pending, description: "VRF service (e.g. DHCP server in VRF)" }
   VRF-004: { category: vrf, subcategory: vrf, topology: pair, status: pending, description: "show ip route vrf / ping vrf / force vrf" }
   VRF-005: { category: vrf, subcategory: vrf, topology: pair, status: pending, description: "L3VPN VRF route leaking (RD/RT/import export vpn)" }
 
@@ -235,12 +244,12 @@ rv_test_registry:
   OP-PWR-001:  { category: operation, subcategory: password-recovery, topology: single, status: pending, description: "Password recovery procedure" }
 
   # ─── installation (7 tests, 0 implemented) ─────────────────────────
-  INST-001: { category: install, subcategory: install, topology: single, status: pending, description: "Fresh install from image" }
+  INST-001: { category: install, subcategory: install, topology: single, status: pending, description: "Fresh install from image (boot and basic setup)" }
   INST-002: { category: install, subcategory: image, topology: single, status: pending, description: "Image management (list set default delete)" }
   INST-003: { category: install, subcategory: update, topology: single, status: pending, description: "System update (add image upgrade)" }
   INST-004: { category: install, subcategory: bare-metal, topology: single, status: pending, description: "Bare-metal install" }
   INST-005: { category: install, subcategory: secure-boot, topology: single, status: pending, description: "Secure Boot enablement and verification" }
-  INST-006: { category: install, subcategory: virtual, topology: single, status: pending, description: "Virtual install (libvirt Proxmox VMware EVE-NG Docker)" }
+  INST-006: { category: install, subcategory: virtual, topology: single, status: pending, description: "Virtual install (e.g. libvirt Proxmox VMware EVE-NG Docker)" }
   INST-007: { category: install, subcategory: cloud, topology: single, status: pending, description: "Cloud deploy (AWS Azure GCP Oracle)" }
 
   # ─── config-migration (4 tests, 0 implemented) ────────────────────
@@ -254,6 +263,6 @@ rv_test_registry:
   CLI-002: { category: cli, subcategory: commit, topology: single, status: pending, description: "Commit-confirm and confirm/cancel" }
   CLI-003: { category: cli, subcategory: compare, topology: single, status: pending, description: "Compare (working vs saved and revision N vs M)" }
   CLI-004: { category: cli, subcategory: rollback, topology: single, status: pending, description: "Rollback to revision N (with reboot)" }
-  CLI-005: { category: cli, subcategory: session, topology: single, status: pending, description: "Exit discard (discard uncommitted changes)" }
+  CLI-005: { category: cli, subcategory: session, topology: single, status: pending, description: "Exit discard (discard uncommitted changes and exit)" }
   CLI-006: { category: cli, subcategory: revisions, topology: single, status: pending, description: "Show system commit and commit-revisions" }
   CLI-007: { category: cli, subcategory: archive, topology: single, status: pending, description: "Commit-archive (remote backup on commit)" }

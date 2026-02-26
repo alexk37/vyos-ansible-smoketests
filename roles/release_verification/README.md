@@ -1,6 +1,6 @@
 # Release verification role
 
-Ansible role implementing the VyOS release verification test suite. Covers 209 test cases across 19 categories; 31 implemented so far.
+Ansible role implementing the VyOS release verification test suite. Covers 215 test cases across 19 categories; 31 implemented so far.
 
 ## Directory structure
 
@@ -25,7 +25,7 @@ roles/release_verification/
     install/ migration/       # placeholder main.yml only
   vars/
     main.yml                  # auto-loaded role vars (organized by category)
-    test_registry.yml         # metadata for all 207 tests (not auto-loaded)
+    test_registry.yml         # metadata for all 215 tests (not auto-loaded)
 ```
 
 `describe_test.py` (project root) lists tests, commands, and assertions for each test. Run `python3 describe_test.py BOND-001` to print one test; use `--all` for all tests; add `--update` to regenerate `.md` sidecar files.
@@ -204,7 +204,7 @@ Each tunnel/overlay type gets its own IP pair so tests don't conflict:
 
 ## Development guidelines
 
-Rules to follow when creating or modifying tests. Non-negotiable — these prevent regressions and keep the suite maintainable at 207+ tests.
+Rules to follow when creating or modifying tests. Non-negotiable — these prevent regressions and keep the suite maintainable at 215+ tests.
 
 ### 1. Keep `.md` docs in sync with `.yml` tests
 
@@ -349,12 +349,12 @@ VTI interfaces require an IPsec Security Association to forward traffic. VTI-001
 
 | Category | Total | Done | Topology mix |
 |----------|-------|------|-------------|
-| interfaces | 22 | **22** | 10 pair, 5 single, 7 special |
+| interfaces | 24 | **22** | 10 pair, 5 single, 7 special |
 | firewall | 11 | **9** | 6 pair, 3 trio |
-| nat | 5 | 0 | pair |
-| protocols | 22 | 0 | mostly pair, some quad |
+| nat | 6 | 0 | pair |
+| protocols | 25 | 0 | mostly pair, some quad |
 | policy | 8 | 0 | mostly single |
-| service | 26 | 0 | mixed |
+| service | 28 | 0 | mixed |
 | system | 28 | 0 | mostly single |
 | qos | 8 | 0 | single |
 | vpn | 9 | 0 | mostly pair |
@@ -368,7 +368,7 @@ VTI interfaces require an IPsec Security Association to forward traffic. VTI-001
 | cli | 7 | 0 | single |
 | install | 7 | 0 | single |
 | migration | 4 | 0 | single |
-| **Total** | **209** | **31** | |
+| **Total** | **215** | **31** | |
 
 ## Run
 
