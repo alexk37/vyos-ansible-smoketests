@@ -5,6 +5,13 @@
 # Uses rv_eth_test_interfaces[0] (eth1) as source-interface.
 # Without a PPPoE server, the interface won't come up — verify config was accepted.
 - block:
+    - name: PPPOE-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces pppoe {{ rv_pppoe_name }}"
+      ignore_errors: true
+      tags: [PPPOE-001, interfaces, pppoe, cleanup]
+
     - name: PPPOE-001 - Configure PPPoE client
       vyos.vyos.vyos_config:
         lines:

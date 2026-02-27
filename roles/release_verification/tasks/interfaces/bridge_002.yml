@@ -1,49 +1,50 @@
 ---
-# BRIDGE-002: Bridge firewall — configuration applies (config-only)
-# Topology: 1-node
-#   r1: creates br0, adds bridge firewall forward filter rule, verifies in show output
+# BRIDGE-002: VLAN-aware bridge and connectivity
+# Topology: 2-node (pair_1)
+#   r1, r2: each creates VLAN-aware br0 with eth1 as access port (native-vlan 10),
+#           IP on br0 vif 10. Ping peer to verify L2 connectivity across bridge.
 #
-# In current VyOS, bridge firewall is global under "set firewall bridge",
-# not per-interface. We create a bridge, add bridge firewall rules, and verify
-# they appear in "show firewall bridge".
+# Unit tests (test_bridge_vlan_filter) cover: config/sysfs only, single-node.
+# This test adds: real L2 connectivity between two nodes over VLAN-aware bridge.
 #
-# NOTE — config-only, no traffic test:
-#   This test verifies the bridge firewall config can be committed on live hardware.
-#   Actual enforcement (FORWARD, INPUT, OUTPUT hooks blocking/accepting real frames)
-#   is covered by FW-BRIDGE-001 (firewall category), which uses a 3-node topology:
-#   r1 eth3 → r2 br0 (eth3+eth2) → r3 eth1, with real ICMP traffic crossing the bridge.
 - block:
-    - name: BRIDGE-002 - Configure bridge
+    - name: BRIDGE-002 - Pre-clean bridge
       vyos.vyos.vyos_config:
         lines:
-          - "set interfaces bridge {{ rv_bridge_name }} address '{{ rv_ipv4_prefix }}.2/24'"
-          - "set interfaces bridge {{ rv_bridge_name }} member interface '{{ rv_eth_test_interfaces[1] }}'"
-      tags: [BRIDGE-002, interfaces, bridge]
+          - "delete interfaces bridge {{ rv_bridge_name }}"
+      ignore_errors: true
+      tags: [BRIDGE-002, interfaces, bridge, cleanup]
 
-    - name: BRIDGE-002 - Configure bridge firewall forward filter
+    - name: BRIDGE-002 - Configure VLAN-aware bridge (enable-vlan, member, vif)
       vyos.vyos.vyos_config:
         lines:
-          - "set firewall bridge forward filter default-action 'accept'"
-          - "set firewall bridge forward filter rule 1 action 'accept'"
-          - "set firewall bridge forward filter rule 1 protocol 'icmp'"
+          - "set interfaces bridge {{ rv_bridge_name }} enable-vlan"
+          - "set interfaces bridge {{ rv_bridge_name }} member interface {{ rv_eth_test_interfaces[0] }} native-vlan {{ rv_bridge_vlan_id }}"
+          - "set interfaces bridge {{ rv_bridge_name }} member interface {{ rv_eth_test_interfaces[0] }} allowed-vlan {{ rv_bridge_vlan_id }}"
+          - "set interfaces bridge {{ rv_bridge_name }} vif {{ rv_bridge_vlan_id }} address '{{ rv_bridge_vlan_ip }}/24'"
       tags: [BRIDGE-002, interfaces, bridge]
 
-    - name: BRIDGE-002 - Verify bridge firewall (show)
+    - name: BRIDGE-002 - Verify bridge VLAN filter (show bridge vlan)
       vyos.vyos.vyos_command:
         commands:
-          - "show firewall bridge"
-      register: fw_show
+          - "show bridge vlan"
+      register: bridge_vlan
       tags: [BRIDGE-002, interfaces, bridge]
 
-    - name: BRIDGE-002 - Assert bridge firewall rules present
+    - name: BRIDGE-002 - Assert VLAN-aware bridge config present
       ansible.builtin.assert:
         that:
-          - fw_show.stdout is defined
-          - fw_show.stdout | length > 0
-          - "'forward' in fw_show.stdout[0]"
-          - "'icmp' in fw_show.stdout[0]"
-          - "'accept' in fw_show.stdout[0]"
-        fail_msg: "BRIDGE-002: Bridge firewall rules not found. Expected forward filter with rule 1 icmp accept. Got: {{ fw_show.stdout[0] | default('(no output)') | truncate(300) }}"
+          - bridge_vlan.stdout is defined
+          - bridge_vlan.stdout | length > 0
+          - "rv_bridge_vlan_id in bridge_vlan.stdout[0]"
+          - "rv_bridge_name in bridge_vlan.stdout[0] or rv_eth_test_interfaces[0] in bridge_vlan.stdout[0]"
+        fail_msg: "BRIDGE-002: VLAN-aware bridge config not found. show bridge vlan: {{ bridge_vlan.stdout[0] | default('') | truncate(300) }}"
+      tags: [BRIDGE-002, interfaces, bridge]
+
+    - import_tasks: ../_helpers/ping_peer.yml
+      vars:
+        _ping_target: "10.50.0.{{ rv_host_octet[rv_peer] }}"
+        _ping_test_id: "BRIDGE-002"
       tags: [BRIDGE-002, interfaces, bridge]
 
   rescue:
@@ -52,11 +53,9 @@
         _test_failed: true
 
   always:
-    - name: BRIDGE-002 - Cleanup bridge firewall and bridge
+    - name: BRIDGE-002 - Cleanup bridge
       vyos.vyos.vyos_config:
-        lines:
-          - "delete firewall bridge forward filter"
-          - "delete interfaces bridge {{ rv_bridge_name }}"
+        lines: ["delete interfaces bridge {{ rv_bridge_name }}"]
       ignore_errors: true
       tags: [BRIDGE-002, interfaces, bridge, cleanup]
-  when: inventory_hostname == 'r1'
+  when: inventory_hostname in groups['pair_1']

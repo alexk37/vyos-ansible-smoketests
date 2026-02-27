@@ -4,6 +4,13 @@
 #   r1: creates br0 with eth2 as member, verifies bridge and member presence
 # Self-contained: uses eth2 as bridge member. Cleanup releases it.
 - block:
+    - name: BRIDGE-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces bridge {{ rv_bridge_name }}"
+      ignore_errors: true
+      tags: [BRIDGE-001, interfaces, bridge, cleanup]
+
     - name: BRIDGE-001 - Configure bridge with member
       vyos.vyos.vyos_config:
         lines:

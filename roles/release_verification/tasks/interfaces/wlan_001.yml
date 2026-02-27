@@ -4,6 +4,13 @@
 #   r1: checks for wireless hardware, configures wlan0 if present, gracefully skips if absent
 # Verifies the CLI path exists. If no wireless hardware, reports skip with explanation.
 - block:
+    - name: WLAN-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces wireless wlan0"
+      ignore_errors: true
+      tags: [WLAN-001, interfaces, wireless, cleanup]
+
     - name: WLAN-001 - Check for wireless hardware
       vyos.vyos.vyos_command:
         commands:

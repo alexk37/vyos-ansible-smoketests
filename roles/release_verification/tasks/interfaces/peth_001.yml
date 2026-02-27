@@ -3,6 +3,13 @@
 # Topology: 1-node
 #   r1: creates peth0 on eth1 with address, verifies interface present
 - block:
+    - name: PETH-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces pseudo-ethernet peth0"
+      ignore_errors: true
+      tags: [PETH-001, interfaces, pseudo-ethernet, cleanup]
+
     - name: PETH-001 - Configure pseudo-ethernet (source-interface)
       vyos.vyos.vyos_config:
         lines:

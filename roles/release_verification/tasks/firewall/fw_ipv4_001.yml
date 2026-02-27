@@ -15,6 +15,14 @@
 #   - Rule ordering is enforced on live traffic: lower-numbered accept rule (50) beats
 #     higher-numbered drop rule (100) — proven by traffic, not just nftables config
 - block:
+    - name: FW-IPV4-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-IPV4-001, firewall, ipv4, cleanup]
+
     - name: FW-IPV4-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -24,6 +32,16 @@
     - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
       vars:
         _wait_test_id: "FW-IPV4-001"
+      tags: [FW-IPV4-001, firewall, ipv4]
+
+    - name: "FW-IPV4-001 - Baseline: verify connectivity before firewall rules"
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_ipv4_001_baseline
+      until: "', 0% packet loss' in _fw_ipv4_001_baseline.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-IPV4-001, firewall, ipv4]
 
     - name: FW-IPV4-001 - Add drop rule for ICMP from peer

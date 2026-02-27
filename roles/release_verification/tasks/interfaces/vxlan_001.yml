@@ -4,6 +4,14 @@
 #   r1: creates vxlan with remote=r2 underlay, same VNI, overlay IP, pings r2
 #   r2: creates vxlan with remote=r1 underlay, same VNI, overlay IP, pings r1
 - block:
+    - name: VXLAN-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces vxlan {{ rv_vxlan_name }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [VXLAN-001, interfaces, vxlan, cleanup]
+
     - name: VXLAN-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -52,7 +60,7 @@
 
     - import_tasks: ../_helpers/ping_peer.yml
       vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_vxlan_overlay_ip }}"
+        _ping_target: "198.51.120.{{ rv_host_octet[rv_peer] }}"
         _ping_test_id: "VXLAN-001"
       tags: [VXLAN-001, interfaces, vxlan]
 

@@ -45,11 +45,12 @@ Inventory usage, configuration, and exact verification method for each case.
 - **Verify**: `show interfaces bridge br0` contains bridge name.
 - **Cleanup**: delete `interfaces bridge br0`.
 
-### 3. BRIDGE-002 – bridge with forward firewall rule
-- **Inventory**: 1-node (vyos_hosts)
-- **Config**: `br0` with member interface + address; `firewall bridge forward filter rule 1` accept ICMP.
-- **Verify**: `show firewall bridge` contains rule; `show interfaces bridge br0` contains bridge name.
-- **Cleanup**: delete firewall bridge forward filter rule + bridge.
+### 3. BRIDGE-002 – VLAN-aware bridge and connectivity
+- **Inventory**: **2-node (pair_1)**
+- **Config**: r1 and r2 each create VLAN-aware `br0` with eth1 as member (`enable-vlan`, `native-vlan 10`, `allowed-vlan 10`); IP on `br0 vif 10` (from `rv_bridge_vlan_ip`: 10.50.0.1/24, 10.50.0.2/24).
+- **Verify**: `show bridge vlan` contains VLAN 10 and bridge/member interface (confirms VLAN filtering active).
+- **2-node verify**: each router pings `hostvars[rv_peer].rv_bridge_vlan_ip` over the VLAN-aware bridge.
+- **Cleanup**: delete `interfaces bridge br0`.
 
 ### 4. DUMMY-001 – dummy
 - **Inventory**: **2-node (pair_1)**
@@ -259,7 +260,7 @@ Inventory usage, configuration, and exact verification method for each case.
 |------|-----------|---------------------|
 | BOND-001 | 1-node | show bonding + members |
 | BRIDGE-001 | 1-node | show bridge |
-| BRIDGE-002 | 1-node | show firewall bridge forward + bridge |
+| BRIDGE-002 | **pair_1** | show VLAN-aware bridge + **ping peer** (br0 vif 10) |
 | DUMMY-001 | **pair_1** | show + **ping peer dummy** (OSPF) |
 | ETH-001 | **pair_1** | show + **ping peer test IP** (direct) |
 | ETH-002 | **pair_1** | show + **ping peer VLAN IP** (eth1.100) |
@@ -289,6 +290,6 @@ Inventory usage, configuration, and exact verification method for each case.
 | FW-IPV6-001 | **trio_1** | IPv6 drop/accept rule ordering on r2 input + output + forward chains |
 | FW-BRIDGE-001 | **trio_1** | bridge FORWARD/INPUT/OUTPUT/PREROUTING hooks with real ICMP block/allow |
 
-**1-node tests: 13** — single-router config + show (VTI-001 and PPPOE-001 also run on r1 only).
-**2-node tests: 15** — pair_1; ping or traffic enforcement between r1 and r2.
+**1-node tests: 12** — single-router config + show (VTI-001 and PPPOE-001 also run on r1 only).
+**2-node tests: 16** — pair_1; ping or traffic enforcement between r1 and r2.
 **3-node tests: 3** — trio_1; asymmetric roles (source / middle router or bridge / destination).

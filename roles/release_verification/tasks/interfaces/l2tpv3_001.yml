@@ -4,6 +4,14 @@
 #   r1: creates l2tpv3 with source=rv_underlay_ip, remote=r2, matching tunnel/session IDs, pings r2
 #   r2: creates l2tpv3 with source=rv_underlay_ip, remote=r1, matching tunnel/session IDs, pings r1
 - block:
+    - name: L2TPV3-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces l2tpv3 {{ rv_l2tpv3_name }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [L2TPV3-001, interfaces, l2tpv3, cleanup]
+
     - name: L2TPV3-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -66,7 +74,7 @@
 
     - import_tasks: ../_helpers/ping_peer.yml
       vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_l2tpv3_overlay_ip }}"
+        _ping_target: "198.51.111.{{ rv_host_octet[rv_peer] }}"
         _ping_test_id: "L2TPV3-001"
       tags: [L2TPV3-001, interfaces, l2tpv3]
 

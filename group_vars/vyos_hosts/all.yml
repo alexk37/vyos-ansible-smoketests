@@ -8,7 +8,7 @@ ansible_network_os              : vyos.vyos.vyos
 ansible_connection              : ansible.netcommon.network_cli
 ansible_network_cli_ssh_type   : paramiko
 ansible_paramiko_proxy_command : "ssh -W %h:%p tests"
-ansible_command_timeout         : 30
-ansible_connect_timeout    : 10
+ansible_command_timeout         : 60
+ansible_connect_timeout    : 20
 # gather_facts               : false
 

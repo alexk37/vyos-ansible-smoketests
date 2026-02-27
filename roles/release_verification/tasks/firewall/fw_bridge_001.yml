@@ -30,6 +30,31 @@
 #   - OUTPUT rule ordering: accept rule 50 overrides drop rule 100
 #   - PREROUTING: configuration commits on live hardware (chain creation verified)
 - block:
+    - name: FW-BRIDGE-001 - Pre-clean r2 bridge firewall and bridge
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall bridge"
+          - "delete interfaces bridge br0"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Pre-clean r1 eth3 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth3 address '{{ r1_bridge_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
+    - name: FW-BRIDGE-001 - Pre-clean r3 eth1 address
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r3_bridge_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-BRIDGE-001, firewall, bridge, cleanup]
+
     # ── Phase 1: Underlay setup ──────────────────────────────────────────────
     - name: FW-BRIDGE-001 - Configure r1 eth3 address
       vyos.vyos.vyos_config:

@@ -12,12 +12,8 @@ rv_peer: "r1"
 rv_underlay_ip: "{{ r3_eth1_ip }}"
 rv_ipv6_underlay_ip: "fd00::3"
 rv_dummy_ip: "{{ r3_dum0_ip }}"
-rv_eth_test_ip: "10.30.0.3"
-rv_vlan_test_ip: "10.100.0.3"
-rv_tunnel_overlay_ip: "198.51.100.3"
-rv_geneve_overlay_ip: "198.51.110.3"
-rv_l2tpv3_overlay_ip: "198.51.111.3"
-rv_vti_overlay_ip: "198.51.112.3"
-rv_vxlan_overlay_ip: "198.51.120.3"
-rv_wg_overlay_ip: "10.10.10.3"
-rv_loop_test_ip: "192.0.2.203"
+
+# Computed overlay IPs (rv_*_overlay_ip, rv_*_test_ip) are defined in
+# roles/release_verification/vars/main.yml using rv_host_octet[inventory_hostname].
+# Peer IPs are computed inline in task files as rv_host_octet[rv_peer] — no
+# hostvars[] lookup needed, so no per-host stubs required here.

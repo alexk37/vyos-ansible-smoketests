@@ -4,6 +4,14 @@
 #   r1: generates self-signed cert on controller, installs into VyOS PKI,
 #       configures vtun0 in passive TLS mode, verifies interface appears
 - block:
+    - name: OVPN-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces openvpn {{ rv_openvpn_name }}"
+          - "delete pki certificate ovpn_test"
+      ignore_errors: true
+      tags: [OVPN-001, interfaces, openvpn, cleanup]
+
     - name: OVPN-001 - Generate cert and key, extract VyOS PKI base64 (controller)
       ansible.builtin.shell: |
         openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \

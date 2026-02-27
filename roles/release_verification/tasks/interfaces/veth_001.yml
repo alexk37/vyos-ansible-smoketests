@@ -3,6 +3,14 @@
 # Topology: 1-node
 #   r1: creates veth0/veth1 pair, verifies both endpoints present
 - block:
+    - name: VETH-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces virtual-ethernet veth0"
+          - "delete interfaces virtual-ethernet veth1"
+      ignore_errors: true
+      tags: [VETH-001, interfaces, virtual-ethernet, cleanup]
+
     - name: VETH-001 - Configure virtual ethernet pair (veth0 <-> veth1)
       vyos.vyos.vyos_config:
         lines:

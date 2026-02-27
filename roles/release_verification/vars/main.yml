@@ -16,6 +16,8 @@ rv_dummy_name: "dum0"
 rv_loopback_name: "lo"
 rv_bond_name: "bond0"
 rv_bridge_name: "br0"
+rv_bridge_vlan_id: "10"
+rv_bridge_vlan_ip: "10.50.0.{{ rv_host_octet[inventory_hostname] }}"
 rv_vxlan_name: "vxlan0"
 rv_vxlan_vni: "10"
 rv_vxlan_remote: "127.0.2.1"
@@ -34,6 +36,24 @@ rv_geneve_vni: "10"
 rv_l2tpv3_name: "l2tpv3-1"
 rv_sstp_name: "sstp0"
 rv_openvpn_name: "vtun0"
+
+# ─── Overlay IP computation ──────────────────────────────────────────
+# Per-host octet for computing overlay IPs.  Add entries for new hosts.
+rv_host_octet:
+  r1: 1
+  r2: 2
+  r3: 3
+
+# Overlay IPs — computed from host octet (no per-host definitions needed)
+rv_eth_test_ip:        "10.30.0.{{ rv_host_octet[inventory_hostname] }}"
+rv_vlan_test_ip:       "10.100.0.{{ rv_host_octet[inventory_hostname] }}"
+rv_tunnel_overlay_ip:  "198.51.100.{{ rv_host_octet[inventory_hostname] }}"
+rv_geneve_overlay_ip:  "198.51.110.{{ rv_host_octet[inventory_hostname] }}"
+rv_l2tpv3_overlay_ip:  "198.51.111.{{ rv_host_octet[inventory_hostname] }}"
+rv_vti_overlay_ip:     "198.51.112.{{ rv_host_octet[inventory_hostname] }}"
+rv_vxlan_overlay_ip:   "198.51.120.{{ rv_host_octet[inventory_hostname] }}"
+rv_wg_overlay_ip:      "10.10.10.{{ rv_host_octet[inventory_hostname] }}"
+rv_loop_test_ip:       "192.0.2.{{ 200 + rv_host_octet[inventory_hostname] }}"
 
 # ─── Firewall ───────────────────────────────────────────────────────
 rv_fw_name: "rv_test"

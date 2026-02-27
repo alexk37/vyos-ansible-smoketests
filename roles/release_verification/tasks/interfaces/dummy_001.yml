@@ -4,6 +4,15 @@
 #   r1: creates dummy with rv_dummy_ip, sets up OSPF on eth1 underlay, redistributes connected, pings r2 dummy
 #   r2: creates dummy with rv_dummy_ip, sets up OSPF on eth1 underlay, redistributes connected, pings r1 dummy
 - block:
+    - name: DUMMY-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces dummy {{ rv_dummy_name }}"
+          - "delete protocols ospf"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [DUMMY-001, interfaces, dummy, cleanup]
+
     - name: DUMMY-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:

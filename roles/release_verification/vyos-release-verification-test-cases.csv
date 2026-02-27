@@ -1,7 +1,7 @@
 category,subcategory,test_case_id,test_case_description
 interfaces,bonding,BOND-001,Configure interface bonding and verify member interfaces
 interfaces,bridge,BRIDGE-001,Configure bridge and add member interfaces
-interfaces,bridge,BRIDGE-002,Bridge firewall (prerouting/forward/input/output) rules apply
+interfaces,bridge,BRIDGE-002,Configure a VLAN-aware bridge and check connectivity
 interfaces,dummy,DUMMY-001,Create dummy interface with IPv4/IPv6 address
 interfaces,ethernet,ETH-001,Configure ethernet interface address (static/DHCP)
 interfaces,ethernet,ETH-002,VLAN subinterfaces on ethernet

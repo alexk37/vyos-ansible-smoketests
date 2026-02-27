@@ -11,6 +11,16 @@
 #   3. Post-firewall ping → 100% loss (ICMP not in port-group, dropped by default)
 #   4. SSH connection alive throughout → proves TCP/22 is accepted by the rule
 - block:
+    - name: FW-GROUP-002 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter"
+          - "delete firewall group port-group {{ rv_fw_group_port }}"
+          - "delete firewall group interface-group {{ rv_fw_group_interface }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GROUP-002, firewall, groups, cleanup]
+
     - name: FW-GROUP-002 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:

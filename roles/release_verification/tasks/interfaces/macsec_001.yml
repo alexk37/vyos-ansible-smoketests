@@ -5,6 +5,13 @@
 # MACsec is a separate interface type in VyOS: "set interfaces macsec <name>"
 # Uses static key mode (no MKA/CAK needed). Source-interface is eth1.
 - block:
+    - name: MACSEC-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces macsec macsec0"
+      ignore_errors: true
+      tags: [MACSEC-001, interfaces, macsec, cleanup]
+
     - name: MACSEC-001 - Configure MACsec interface with static key
       vyos.vyos.vyos_config:
         lines:

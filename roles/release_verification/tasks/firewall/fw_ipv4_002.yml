@@ -17,6 +17,41 @@
 #   - Rule ordering on forwarded traffic: lower-numbered accept rule (50) beats drop rule (100)
 #   - Full 3-node interop: static routing + forward filter on a two-interface router
 - block:
+    - name: FW-IPV4-002 - Pre-clean r2 firewall rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 forward filter"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Pre-clean r1 routes and addresses
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route 10.0.3.0/24"
+          - "delete interfaces ethernet eth1 address '{{ r1_eth1_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Pre-clean r3 routes and addresses
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route 10.0.2.0/24"
+          - "delete interfaces ethernet eth1 address '{{ r3_eth1_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
+    - name: FW-IPV4-002 - Pre-clean r2 addresses
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r2_eth1_ip }}/24'"
+          - "delete interfaces ethernet eth2 address '{{ r2_eth2_ip }}/24'"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV4-002, firewall, ipv4, cleanup]
+
     # ── Phase 1: Underlay setup ──────────────────────────────────────────────
     - name: FW-IPV4-002 - Configure r1 eth1 underlay
       vyos.vyos.vyos_config:

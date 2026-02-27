@@ -4,6 +4,13 @@
 #   r1: checks for WWAN hardware, configures wwan0 if present, gracefully skips if absent
 # Verifies the CLI path exists. If no WWAN hardware, reports skip with explanation.
 - block:
+    - name: WWAN-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces wwan wwan0"
+      ignore_errors: true
+      tags: [WWAN-001, interfaces, wwan, cleanup]
+
     - name: WWAN-001 - Check for WWAN hardware
       vyos.vyos.vyos_command:
         commands:

@@ -24,6 +24,19 @@
 # Wait strategy: apply drop rule first, then retry pings until blocked. This confirms
 # both that vyos-domain-resolver resolved the hostname AND that the rule is enforced.
 - block:
+    - name: FW-GROUP-003 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter"
+          - "delete firewall ipv6 input filter"
+          - "delete firewall group ipv6-address-group {{ rv_fw_group_ipv6_addr }}"
+          - "delete firewall group domain-group {{ rv_fw_group_domain }}"
+          - "delete system static-host-mapping"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+          - "delete interfaces ethernet eth1 address '{{ rv_ipv6_underlay_ip }}/64'"
+      ignore_errors: true
+      tags: [FW-GROUP-003, firewall, groups, cleanup]
+
     # ── Phase 0: Hostname mapping ─────────────────────────────────────────────
     # Add peer.rv.test → peer's underlay IP directly to /etc/hosts via static-host-mapping.
     # vyos-domain-resolver uses the system resolver which reads /etc/hosts first,

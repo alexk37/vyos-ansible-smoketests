@@ -4,6 +4,14 @@
 #   r1: creates geneve with remote=r2 underlay, same VNI, overlay IP, pings r2
 #   r2: creates geneve with remote=r1 underlay, same VNI, overlay IP, pings r1
 - block:
+    - name: GENEVE-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces geneve {{ rv_geneve_name }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [GENEVE-001, interfaces, geneve, cleanup]
+
     - name: GENEVE-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -52,7 +60,7 @@
 
     - import_tasks: ../_helpers/ping_peer.yml
       vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_geneve_overlay_ip }}"
+        _ping_target: "198.51.110.{{ rv_host_octet[rv_peer] }}"
         _ping_test_id: "GENEVE-001"
       tags: [GENEVE-001, interfaces, geneve]
 

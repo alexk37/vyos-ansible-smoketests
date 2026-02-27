@@ -25,6 +25,15 @@
 #   Phase A: all-ping disable → ICMP echo blocked despite default-action accept
 #   Phase B: all-ping enable + broadcast-ping enable → ICMP passes again; verify config
 - block:
+    - name: FW-GLOBAL-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall global-options"
+          - "delete firewall ipv4 input filter"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GLOBAL-001, firewall, global-options, cleanup]
+
     - name: FW-GLOBAL-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -34,6 +43,16 @@
     - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
       vars:
         _wait_test_id: "FW-GLOBAL-001"
+      tags: [FW-GLOBAL-001, firewall, global-options]
+
+    - name: "FW-GLOBAL-001 - Baseline: verify connectivity before firewall rules"
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_global_001_baseline
+      until: "', 0% packet loss' in _fw_global_001_baseline.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-GLOBAL-001, firewall, global-options]
 
     # ── Phase A: all-ping disable blocks ICMP ────────────────────────────────

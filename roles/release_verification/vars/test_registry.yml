@@ -17,7 +17,7 @@ rv_test_registry:
   # ─── interfaces (24 tests, 22 implemented) ────────────────────────
   BOND-001:    { category: interfaces, subcategory: bonding, topology: single, status: implemented, description: "Configure interface bonding and verify member interfaces" }
   BRIDGE-001:  { category: interfaces, subcategory: bridge, topology: single, status: implemented, description: "Configure bridge and add member interfaces" }
-  BRIDGE-002:  { category: interfaces, subcategory: bridge, topology: single, status: implemented, description: "Bridge firewall (prerouting/forward/input/output) rules apply" }
+  BRIDGE-002:  { category: interfaces, subcategory: bridge, topology: pair, status: implemented, description: "Configure a VLAN-aware bridge and check connectivity" }
   DUMMY-001:   { category: interfaces, subcategory: dummy, topology: pair, status: implemented, description: "Create dummy interface with IPv4/IPv6 address" }
   ETH-001:     { category: interfaces, subcategory: ethernet, topology: pair, status: implemented, description: "Configure ethernet interface address (static/DHCP)" }
   ETH-002:     { category: interfaces, subcategory: ethernet, topology: pair, status: implemented, description: "VLAN subinterfaces on ethernet" }

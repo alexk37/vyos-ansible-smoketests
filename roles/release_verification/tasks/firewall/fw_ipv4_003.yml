@@ -17,6 +17,15 @@
 #   - Prerouting raw drop blocks incoming traffic before input chain and conntrack
 #     (fires at priority raw = -300, before filter at 0; all incoming traffic hits it first)
 - block:
+    - name: FW-IPV4-003 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 output filter"
+          - "delete firewall ipv4 prerouting raw"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-IPV4-003, firewall, ipv4, cleanup]
+
     - name: FW-IPV4-003 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -26,6 +35,16 @@
     - import_tasks: ../_helpers/wait_for_eth1_underlay.yml
       vars:
         _wait_test_id: "FW-IPV4-003"
+      tags: [FW-IPV4-003, firewall, ipv4]
+
+    - name: "FW-IPV4-003 - Baseline: verify connectivity before firewall rules"
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_ipv4_003_baseline
+      until: "', 0% packet loss' in _fw_ipv4_003_baseline.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-IPV4-003, firewall, ipv4]
 
     # ── Phase A: Output filter ─────────────────────────────────────────────

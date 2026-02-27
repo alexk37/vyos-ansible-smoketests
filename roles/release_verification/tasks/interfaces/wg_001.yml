@@ -4,6 +4,14 @@
 #   r1: generates keypair, configures wg0 with r2 as peer (exchanged pubkeys), pings r2 overlay
 #   r2: generates keypair, configures wg0 with r1 as peer (exchanged pubkeys), pings r1 overlay
 - block:
+    - name: WG-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces wireguard {{ rv_wireguard_name }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [WG-001, interfaces, wireguard, cleanup]
+
     - name: WG-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -45,7 +53,7 @@
           - "set interfaces wireguard {{ rv_wireguard_name }} private-key '{{ rv_wg_generated_privkey }}'"
           - "set interfaces wireguard {{ rv_wireguard_name }} address '{{ rv_wg_overlay_ip }}/24'"
           - "set interfaces wireguard {{ rv_wireguard_name }} port '{{ rv_wireguard_port }}'"
-          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} allowed-ips '{{ hostvars[rv_peer].rv_wg_overlay_ip }}/32'"
+          - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} allowed-ips '10.10.10.{{ rv_host_octet[rv_peer] }}/32'"
           - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} address '{{ hostvars[rv_peer].rv_underlay_ip }}'"
           - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} port '{{ rv_wireguard_port }}'"
           - "set interfaces wireguard {{ rv_wireguard_name }} peer {{ rv_peer }} public-key '{{ hostvars[rv_peer].rv_wg_generated_pubkey }}'"
@@ -84,7 +92,7 @@
     - name: WG-001 - Wait for WireGuard tunnel to establish (handshake warmup)
       vyos.vyos.vyos_command:
         commands:
-          - "ping {{ hostvars[rv_peer].rv_wg_overlay_ip }} count 3 deadline 5"
+          - "ping 10.10.10.{{ rv_host_octet[rv_peer] }} count 3 deadline 5"
       register: _wg_001_tunnel_warmup
       until: "', 0% packet loss' in _wg_001_tunnel_warmup.stdout[0]"
       retries: 6

@@ -4,6 +4,13 @@
 #   r1: creates vlan100 on eth1 with rv_vlan_test_ip, pings r2
 #   r2: creates vlan100 on eth1 with rv_vlan_test_ip, pings r1
 - block:
+    - name: ETH-002 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet {{ rv_eth_test_interfaces[0] }} vif 100"
+      ignore_errors: true
+      tags: [ETH-002, interfaces, ethernet, cleanup]
+
     - name: ETH-002 - Configure VLAN 100
       vyos.vyos.vyos_config:
         lines:
@@ -29,7 +36,7 @@
 
     - import_tasks: ../_helpers/ping_peer.yml
       vars:
-        _ping_target: "{{ hostvars[rv_peer].rv_vlan_test_ip }}"
+        _ping_target: "10.100.0.{{ rv_host_octet[rv_peer] }}"
         _ping_test_id: "ETH-002"
       tags: [ETH-002, interfaces, ethernet]
 

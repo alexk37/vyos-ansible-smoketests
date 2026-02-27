@@ -4,6 +4,16 @@
 #   r1: creates address/network groups with r2's IP, applies in firewall rule, pings r2
 #   r2: creates address/network groups with r1's IP, applies in firewall rule, pings r1
 - block:
+    - name: FW-GROUP-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv4 input filter"
+          - "delete firewall group address-group {{ rv_fw_group_address }}"
+          - "delete firewall group network-group {{ rv_fw_group_network }}"
+          - "delete interfaces ethernet eth1 address '{{ rv_underlay_ip }}/24'"
+      ignore_errors: true
+      tags: [FW-GROUP-001, firewall, groups, cleanup]
+
     - name: FW-GROUP-001 - Set up eth1 underlay IP
       vyos.vyos.vyos_config:
         lines:
@@ -18,6 +28,16 @@
           - "result[0] contains '{{ rv_underlay_ip }}'"
         retries: 10
         interval: 2
+      tags: [FW-GROUP-001, firewall, groups]
+
+    - name: "FW-GROUP-001 - Baseline: verify connectivity before firewall rules"
+      vyos.vyos.vyos_command:
+        commands:
+          - "ping {{ hostvars[rv_peer].rv_underlay_ip }} count 3 deadline 5"
+      register: _fw_group_001_baseline
+      until: "', 0% packet loss' in _fw_group_001_baseline.stdout[0]"
+      retries: 6
+      delay: 3
       tags: [FW-GROUP-001, firewall, groups]
 
     - name: FW-GROUP-001 - Configure address-group and network-group

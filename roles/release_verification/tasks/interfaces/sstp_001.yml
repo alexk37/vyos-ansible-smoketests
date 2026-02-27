@@ -6,6 +6,14 @@
 # Requires a PKI CA certificate. Without a real SSTP server, connection won't
 # establish — we verify the config was accepted and interface is visible.
 - block:
+    - name: SSTP-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces sstpc sstpc0"
+          - "delete pki ca sstp_test"
+      ignore_errors: true
+      tags: [SSTP-001, interfaces, sstpc, cleanup]
+
     - name: SSTP-001 - Create PKI CA for SSTP
       vyos.vyos.vyos_config:
         lines:

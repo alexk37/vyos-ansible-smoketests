@@ -29,6 +29,42 @@
 # NDP uses link-local source fe80:: and solicited-node multicast ff02::1:ffxx:xxxx,
 # which never match fd00:: rules. Phase C forward filter only affects routed traffic.
 - block:
+    - name: FW-IPV6-001 - Pre-clean r2 firewall rules
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Pre-clean r1 firewall and routes
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete firewall ipv6 output filter"
+          - "delete protocols static route6 fd00:0:3::/64"
+          - "delete interfaces ethernet eth1 address '{{ r1_eth1_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r1'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Pre-clean r3 routes and addresses
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete protocols static route6 fd00:0:2::/64"
+          - "delete interfaces ethernet eth1 address '{{ r3_eth1_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r3'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
+    - name: FW-IPV6-001 - Pre-clean r2 addresses
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces ethernet eth1 address '{{ r2_eth1_ip6 }}/64'"
+          - "delete interfaces ethernet eth2 address '{{ r2_eth2_ip6 }}/64'"
+      ignore_errors: true
+      when: inventory_hostname == 'r2'
+      tags: [FW-IPV6-001, firewall, ipv6, cleanup]
+
     # ── Phase 1: Underlay setup ──────────────────────────────────────────────
     - name: FW-IPV6-001 - Configure r1 eth1 IPv6 underlay
       vyos.vyos.vyos_config:

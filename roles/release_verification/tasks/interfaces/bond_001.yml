@@ -5,6 +5,13 @@
 # Self-contained: cloud-init only assigns eth0; eth1/eth2 start address-free.
 # Cleanup removes the bond, releasing the member interfaces for other tests.
 - block:
+    - name: BOND-001 - Pre-clean config paths
+      vyos.vyos.vyos_config:
+        lines:
+          - "delete interfaces bonding {{ rv_bond_name }}"
+      ignore_errors: true
+      tags: [BOND-001, interfaces, bonding, cleanup]
+
     - name: BOND-001 - Configure bonding with members
       vyos.vyos.vyos_config:
         lines:
